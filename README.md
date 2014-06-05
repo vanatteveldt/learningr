@@ -30,12 +30,12 @@ General Howto's
 Dealing with textual data
 ----
 
-- [Document-Term Matrices](https://rawgit.com/kasperwelbers/corpus-tools/master/howto/howto_create_dtm.md)
-- [LDA Topic Models](https://rawgit.com/kasperwelbers/corpus-tools/master/howto/howto_latent_dirichlet_allocation.md)
+- [Document-Term Matrices](https://github.com/kasperwelbers/corpus-tools/master/howto/howto_create_dtm.md)
+- [LDA Topic Models](https://github.com/kasperwelbers/corpus-tools/master/howto/howto_latent_dirichlet_allocation.md)
 
 Network Analysis
 ----
 
-- [Using igraph](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_using_igraph.md)
-- [Communication networks](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_explicit_ties_in_communication_networks.md)
-- [Content Similarity Networks](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_content_similarity_network.md)
+- [Using igraph](https://github.com/kasperwelbers/network-tools/master/howto/howto_using_igraph.md)
+- [Communication networks](https://github.com/kasperwelbers/network-tools/master/howto/howto_explicit_ties_in_communication_networks.md)
+- [Content Similarity Networks](https://github.com/kasperwelbers/network-tools/master/howto/howto_content_similarity_network.md)
