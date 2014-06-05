@@ -1,0 +1,163 @@
+```{r, echo=FALSE}
+cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
+```
+
+> Note on the data used in this howto: 
+> This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
+> but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
+> For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
+> http://vanatteveldt.com/uploads/rcourse/data
+
+Basic Modeling
+===
+
+In this hands-on we continue with the `capital` variable created in the [transforming data howto](4_transforming.md).
+You can also download this variable from the course pages:
+
+```{r}
+library(reshape)
+download.file("http://vanatteveldt.com/uploads/rcourse/data/capital.rdata", destfile="capital.rdata")
+load("capital.rdata")
+head(capital)
+```
+
+T-tests
+===
+
+First, let's split our countries into two groups, anglo-saxon countries and european countries (plus Japan):
+We can use the `ifelse` command here combined with the `%in%` operator
+
+```{r}
+anglo = c("U.S.", "U.K.", "Canada", "Australia")
+capital$Group = ifelse(capital$Country %in% anglo, "anglo", "european")
+table(capital$Group)
+```
+
+Now, let's see whether capital accumulation is different between these two groups.
+
+```{r}
+t.test(capital$Private ~ capital$Group)
+```
+
+So, according to this test capital accumulation is indeed significantly higher in European countries than in Anglo-Saxon countries.
+Of course, the data here are not independently distributed since the data in the same year in different countries is related
+(as are data in subsequent years in the same country, but let's ignore that for the moment)
+We could also do a paired t-test of average accumulation per year per group by first using the cast command to aggregate the data.
+Note that we first remove the NA values (for Spain).
+
+```{r}
+capital = na.omit(capital)
+pergroup = cast(capital, Year ~ Group, value="Private", fun.aggregate=mean)
+head(pergroup)
+```
+
+Let's plot the data to have a look at the lines:
+
+```{r}
+plot(pergroup$Year, pergroup$european, type="l", xlab="Year", ylab="Capital accumulation")
+lines(pergroup$Year, pergroup$anglo, lty=2)
+legend("top", lty=c(1,2), legend=c("European", "Anglo-Saxon"))
+```
+
+So initially capital is higher in the Anglo-Saxon countries, but the European countries overtake quickly and stay higher.
+
+Now, a paired-sample t-test again shows a significant difference between the two:
+
+```{r}
+t.test(pergroup$anglo, pergroup$european, paired=T)
+```
+
+Anova
+----
+
+We can also use a one-way Anova to see whether accumulation differs per country.
+Let's first do a box-plot to see how different the countries are.
+Plot by default gives a box plot of a formula with a nominal independeny variable
+
+```{r}
+plot(capital$Private ~ capital$Country)
+```
+
+So, it seems that in fact a lot of countries are quite similar, with some extreme cases of high capital accumulation.
+(also, it seems that including Japan in the Europeaqn countries might have been a mistake).
+We use the `aov` function for this, the `anova` function is meant to analyze already fitted models, 
+as will be shown below.
+
+```{r}
+m = aov(capital$Private ~ capital$Country)
+summary(m)
+```
+
+So in fact there is a significant difference. We can use `pairwise.t.test` to perform
+
+```{r}
+posthoc = pairwise.t.test(capital$Private, capital$Country, p.adj = "bonf")
+round(posthoc$p.value, 2)
+```
+
+Linear models
+----
+
+A more generic way of fitting models is using the `lm` command. 
+In fact, `aov` is a wrapper around `lm`. 
+Let's model private capital as a function of country and public capital:
+
+```{r}
+m = lm(Private ~ Country + Public, data=capital)
+summary(m)
+```
+As you can see, R automatically creates dummy values for nominal values, using the first value (U.S. in this case) as reference category.
+An alternative is to remove the intercept and create a dummy for each country:
+
+```{r}
+m = lm(Private ~ Country + Public - 1, data=capital)
+summary(m)
+```
+
+(`- 1` removes the intercept because there is an implicit +1 constant for the intercept in the regression formula)
+
+You can also introduce interaction terms by using either the `:` operator (which only creates the interaction term)
+or the `*` (which creates a full model including the main effects).
+To keep the model somewhat parsimonious, let's use the country group rather than the country itself
+
+```{r}
+m1 = lm(Private ~ Group + Public, data=capital)
+m2 = lm(Private ~ Group + Public + Group:Public, data=capital)
+```
+
+A nice package to display multiple regression results side by side is the `screenreg` function from the `texreg` package:
+
+```{r}
+library(texreg)
+screenreg(list(m1, m2))
+```
+
+So, there is a significant interaction effect which displaces the main effect of public wealth. 
+
+
+Comparing and diagnosing models
+---
+
+A relevant question can be whether a model with an interaction effect is in fact a better model than the model without the interaction.
+This can be investigated with an anova of the model fits of the two models:
+
+```{r}
+m1 = lm(Private ~ Group + Public, data=capital)
+m2 = lm(Private ~ Group + Public + Group:Public, data=capital)
+anova(m1, m2)
+```
+
+So, the interaction term is in fact a significant improvement of the model. 
+Apparently, in European countries private capital is accumulated faster in those times that the government goes into depth. 
+
+After doing a linear model it is a good idea to do some diagnostics.
+We can ask R for a set of standard plots by simply calling `plot` on the model fit. 
+We use the parameter (`par`) `mfrow` here to put the four plots this produces side by side. 
+
+```{r}
+old.settings = par(mfrow=c(2,2))
+plot(m)
+par(old.settings)
+```
+
+See http://www.statmethods.net/stats/rdiagnostics.html for a more exhausitve list of model diagnostics.

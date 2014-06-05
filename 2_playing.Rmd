@@ -1,0 +1,93 @@
+```{r, echo=FALSE}
+cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
+```
+
+> Note on the data used in this howto: 
+> This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
+> but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
+> For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
+> http://vanatteveldt.com/uploads/rcourse/data
+
+Playing with data in R
+========================================================
+
+
+To demonstrate R, we will use the data from Piketty's 'Capital in the 21st Century' 
+
+```{r}
+download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/income_topdecile.csv", 
+              destfile="income_topdecile.csv")
+income = read.csv("income_topdecile.csv")
+```
+
+We've downloaded a csv file and read it into a new variable `income`, which should appear in your environment list. 
+You can click on the file to inspect it visually, but we can also use the `head` command:
+
+```{r}
+head(income, n=10)
+```
+
+As you can see, the values are NA (missing) for most rows, especially in the earlier period.
+Let's throw out all data containing missing values using the `na.omit` function:
+
+```{r}
+income = na.omit(income)
+head(income)
+```
+
+Much better. 
+Now, we can list the variables in the file using `names` and get the numbers of rows or columns with `nrow` and `ncol`, respectively:
+
+```{r}
+names(income)
+nrow(income)
+ncol(income)
+```
+
+We can also ask for a summary of each of the variables in the file using the `summary` command:
+
+```{r}
+summary(income)
+```
+
+This lists the range, mean, etc. for each variable. 
+We can select any column from a data frame using variable$column:
+
+```{r}
+income$U.S.
+```
+
+This gives a vector of numbers representing the different cells in that column. 
+We can use various functions such as `mean`, `sum`, and `length` to get information about a vector.
+
+```{r}
+length(income$U.S.)
+mean(income$U.S.)
+mean(income$Europe)
+```
+
+As perhaps expected, the mean income inequality in Europe is lower than than in the U.S..
+Let's do a t-test to see if the difference is significant:
+
+```{r}
+t.test(income$U.S., income$Europe, paired=T)
+```
+
+So, with p<.02 we can conclude that the income distribution in the U.S. is more unequal than in Europe. 
+Let's make a simple plot of the income inequality in the U.S. and Europe
+(reproducing fig 9.8 on page 324)
+
+```{r}
+plot(x=income$Year, y=income$U.S., type="l", ylab="Top decile income share", xlab="Year", ylim=c(0, 0.5))
+lines(x=income$Year, y=income$Europe, col="red")
+```
+
+As you can see, income distribution in pre-WWI Europe is actually more unequal than in the U.S., 
+but this is reversed during the 1910's and inequality diverges after the 1970's. 
+Still, the lines are probably correlated:
+
+```{r}
+cor.test(income$U.S., income$Europe)
+```
+
+So, although the correlation is moderate at 0.43, it is not significant (due to a lack of data points)

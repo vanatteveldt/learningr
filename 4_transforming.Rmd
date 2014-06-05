@@ -1,0 +1,169 @@
+```{r, echo=FALSE}
+cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
+```
+
+> Note on the data used in this howto: 
+> This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
+> but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
+> For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
+> http://vanatteveldt.com/uploads/rcourse/data
+
+Merging and transforming data in R
+==================================
+
+Let's have a closer look at the relation at the accumulation of capital in various countries.
+In chapter 5, separate values are introduced for private and public capital: 
+
+```{r}
+download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/private_capital.csv", destfile="private_capital.csv")
+private.capital = read.csv("private_capital.csv")
+download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/public_capital.csv", destfile="public_capital.csv")
+public.capital = read.csv("public_capital.csv")
+```
+
+Combining data using cbind
+----
+
+First, let's combine the two data sets into a single set. 
+This is done using `cbind`, which binds multiple columns (vectors or data frames) into a single data frame. 
+It only works if the data  is alinged correctly and has the same amount of rows, so first we check this:
+
+```{r}
+nrow(private.capital)
+nrow(public.capital)
+table(private.capital$Year == public.capital$Year)
+```
+
+So they both have 41 rows and in all rows the Year variables are identical. 
+Thus, we can use cbind here, omitting the first column of public.capital. 
+
+```{r}
+capital = cbind(private.capital, public.capital[-1])
+head(capital)
+```
+
+Renaming variables
+----
+
+As could be seen in the `head` output, the column names are identical for both data sets, which causes a problem.
+So, let's prepend the last 10 column names with `public.` using the `paste` function, which pastes two texts together.
+
+```{r}
+colnames(capital)[11:19] = paste("public", colnames(capital[11:19]), sep=".")
+head(capital)
+```
+
+/Note that using `merge` rather than `cbind` would be more natural and would prevent these problems, but it is good to know how cbind and renaming works in any case/
+
+In order to rename variables more easily in a 'manual' fashion, the `rename` command from the `plyr` package can be used. 
+If you get an error about missing a package, you can install it using the install.packages function:
+
+```r
+install.packages("reshape")  # only needed the first time
+```
+
+No, we can use `library(plyr)` to load the package, and use the rename command:
+
+```{r}
+library(reshape)
+capital = rename(capital, c("U.K."="UK", "U.S."="US", "public.U.K."="public.UK", "public.U.S."="public.US"))
+head(capital)
+```
+
+Variables to cases using melt
+----
+
+Now assume that we want to calculate the total capital (private plus public) per country.
+One way to do that would be to simply sum the relevant parts of the data frame:
+
+```{r}
+total.capital = capital[, 2:10] + capital[, 11:19]
+head(total.capital)
+```
+
+However, a more general way that will afford more flexibility later is to first transform both datasets from wide into long formats
+(e.g. convert the variables to cases), and then merge the two sets. 
+The `reshape` package has a function `melt` that transforms variables to cases based on a list of index variables that identify the cases.
+
+```{r}
+library(reshape)
+public.long = melt(public.capital, id.vars="Year")
+private.long = melt(private.capital, id.vars="Year")
+head(public.long)
+```
+
+As you can see, we now have one row per year per country. 
+We can now use `merge` to merge the two data frames. 
+By default, `merge` merges data on identical column names. 
+Since the `value` column is also shared between the data frames, 
+and we don't want to merge on that column,
+we need to specify the `by=` argument:
+
+```{r}
+capital = merge(public.long, private.long, by=c("Year", "variable"))
+head(capital)
+```
+
+So now we have our data ready. 
+Let's rename the column names to something more sensible, and then compute the total capital. 
+We also save the file for later use using the `save` command.
+
+```{r}
+colnames(capital) = c("Year", "Country", "Public", "Private")
+capital$Total = capital$Private + capital$Public
+save(capital, file="capital.rdata")
+```
+
+Variables to cases
+---
+
+The counterparg of melting is called casting.
+The `cast` function works by using a 'casting formula' `rows ~ columns` to specify which variables to place in the rows and columns of the resulting data frame.
+
+```{r}
+d = cast(capital, Year ~ Country, value="Total")
+head(d)
+```
+
+So now we have a data frame that we can plot, e.g. using a for loop as above. 
+`cast` can also work to make aggregate functions.
+Suppose we would want to make a plot per decade rather than per year, we first make a new 'decade' value:
+
+```{r}
+capital$Decade = floor(capital$Year / 10) * 10
+```
+
+A good way to check whether a recode such as this succeeded is to tabulate decade and year:
+
+```{r}
+table(capital$Decade, capital$Year)
+```
+
+Now, we use the new Decade variable in the casting formula, and specify an aggregation function `mean`:
+
+```{r}
+d = cast(capital, Decade ~ Country, value="Total", fun.aggregate=mean)
+head(d)
+```
+
+Aggregate vs. cast
+----
+
+Instead of `cast`, we can also use the `normal' `aggregate` command. Cast and aggregate have slightly different applications. 
+Aggregate allows multiple columns to be aggregated in one command (but all using the same aggregation function), 
+but produces a 'long' data format, while `cast` can only aggregate a single variable, but can directly create a tabular data format.
+For example, the following aggregates the public, private and total capital per decade and country:
+
+```{r}
+aggregated = aggregate(capital[c("Public", "Private", "Total")], by=capital[c("Decade", "Country")], FUN=mean)
+head(aggregated)
+```
+
+*Note*: the `by=` argument in aggregate needs to be a list or data frame. Since `capital[, "Decade"]` returns a vector rather than a data frame, you must use either `capital["Decade"]` (ommitting the comma) or `capital[, "Decade", drop=F]`. For example, the first attempt below to aggregate the recent values per country fails because of this problem:
+
+```{r}
+aggregated = aggregate(capital["Total"], by=capital[, "Country"], FUN=mean)
+aggregated = aggregate(capital["Total"], by=capital[, "Country", drop=F], FUN=mean)
+head(aggregated)
+```
+
