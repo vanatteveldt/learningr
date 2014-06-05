@@ -15,27 +15,27 @@ General Howto's
 ----
 
 - Getting started
-  - [using R as a calculator](1_r_calculator.md)
-  - [playing with data in R](2_playing.md)
+  - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.html)
+  - [playing with data in R](https://rawgit.com/vanatteveldt/learningr/master/2_playing.html)
 - Data preparation
-  - [Organizing data](3_organizing.md)
-  - [Transforming and merging data](4_transforming.md)
+  - [Organizing data](https://rawgit.com/vanatteveldt/learningr/master/3_organizing.html)
+  - [Transforming and merging data](https://rawgit.com/vanatteveldt/learningr/master/4_transforming.html)
 - Data analysis
-  - [Plotting your data](6_visualization.md)
-  - [Data modeling: T-tests to linear models](5_modeling.md)
+  - [Plotting your data](https://rawgit.com/vanatteveldt/learningr/master/6_visualization.html)
+  - [Data modeling: T-tests to linear models](https://rawgit.com/vanatteveldt/learningr/master/5_modeling.html)
 - Advanced modeling
-  - [Time series models](7_timeseries.md)
-  - [Multi-level models](8_multilevel.md)
+  - [Time series models](https://rawgit.com/vanatteveldt/learningr/master/7_timeseries.html)
+  - [Multi-level models](https://rawgit.com/vanatteveldt/learningr/master/8_multilevel.html)
   
 Dealing with textual data
 ----
 
-- [Document-Term Matrices](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_create_dtm.md)
-- [LDA Topic Models](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_latent_dirichlet_allocation.md)
+- [Document-Term Matrices](https://rawgit.com/kasperwelbers/corpus-tools/master/howto/howto_create_dtm.md)
+- [LDA Topic Models](https://rawgit.com/kasperwelbers/corpus-tools/master/howto/howto_latent_dirichlet_allocation.md)
 
 Network Analysis
 ----
 
-- [Using igraph](https://github.com/kasperwelbers/network-tools/blob/master/howto/howto_using_igraph.md)
-- [Communication networks](https://github.com/kasperwelbers/network-tools/blob/master/howto/howto_explicit_ties_in_communication_networks.md)
-- [Content Similarity Networks](https://github.com/kasperwelbers/network-tools/blob/master/howto/howto_content_similarity_network.md)
+- [Using igraph](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_using_igraph.md)
+- [Communication networks](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_explicit_ties_in_communication_networks.md)
+- [Content Similarity Networks](https://rawgit.com/kasperwelbers/network-tools/master/howto/howto_content_similarity_network.md)
