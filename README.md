@@ -15,7 +15,7 @@ General Howto's
 ----
 
 - Getting started
-  - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.html)
+  - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/1_r_calculator.Rmd))
   - [playing with data in R](https://rawgit.com/vanatteveldt/learningr/master/2_playing.html)
 - Data preparation
   - [Organizing data](https://rawgit.com/vanatteveldt/learningr/master/3_organizing.html)
@@ -26,10 +26,11 @@ General Howto's
 - Advanced modeling
   - [Time series models](https://rawgit.com/vanatteveldt/learningr/master/7_timeseries.html)
   - [Multi-level models](https://rawgit.com/vanatteveldt/learningr/master/8_multilevel.html)
-  
+
 Dealing with textual data
 ----
 
+- [Querying AmCAT](https://rawgit.com/amcat/amcat-r/master/howto/howto_query.html)
 - [Document-Term Matrices](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_create_dtm.md)
 - [LDA Topic Models](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_latent_dirichlet_allocation.md)
 
