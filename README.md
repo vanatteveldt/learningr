@@ -27,6 +27,7 @@ General Howto's
   - [Time series models](https://rawgit.com/vanatteveldt/learningr/master/7_timeseries.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/7_timeseries.Rmd))
   - [Multi-level models](https://rawgit.com/vanatteveldt/learningr/master/8_multilevel.html)
  ([source](https://github.com/vanatteveldt/learningr/blob/master/8_multilevel.Rmd))
+
 Dealing with textual data
 ----
 
