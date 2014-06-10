@@ -5,9 +5,10 @@ R is a very powerful and flexible statistics package and programming language.
 
 This repository contains a number of 'howto' files aimed to providing an introduction to R and some os its possibilities.
 
-Two other great sites for learning R are:
+Some other great sites for learning R are:
 - [OpenIntro statistics](http://openintro.org/stat/labs.php) with a number of good statistics 'labs' in R
 - [Quick-R](http://www.statmethods.net) with explanations and sample code for a wide array of applications
+- [Advanced R Programming](http://adv-r.had.co.nz/) for (much) more information on what is really going on.
 
 To install R and RStudio, please see [lab 0 of the OpenIntro statistics book](http://openintro.org/download.php?file=os2_lab_00A&referrer=/stat/labs.php).
 
