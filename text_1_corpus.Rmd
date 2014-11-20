@@ -1,0 +1,277 @@
+Corpus analysis: the document-term matrix
+=========================================
+
+_(C) 2014 Wouter van Atteveldt, license: [CC-BY-SA]_
+
+The most important object in frequency-based text analysis is the *document term matrix*. 
+This matrix contains the documents in the rows and terms (words) in the columns, 
+and each cell is the frequency of that term in that document.
+
+In R, these matrices are provided by the `tm` (text mining) package. 
+Although this package provides many functions for loading and manipulating these matrices,
+using them directly is relatively complicated. 
+
+Fortunately, the `RTextTools` package provides an easy function to create a document-term matrix from a data frame. To create a term document matrix from a simple data frame with a 'text' column, use the `create_matrix` function
+
+```{r,message=F}
+library(RTextTools)
+input = data.frame(text=c("Chickens are birds", "The bird eats"))
+m = create_matrix(input$text, removeStopwords=F)
+```
+
+We can inspect the resulting matrix using the regular R functions:
+
+```{r}
+class(m)
+dim(m)
+```
+
+So, `m` is a `DocumentTermMatrix`, which is derived from a `simple_triplet_matrix` as provided by the `slam` package. 
+Internally, document-term matrices are stored as a _sparse matrix_: 
+if we do use real data, we can easily have hundreds of thousands of rows and columns, while   the vast majority of cells will be zero (most words don't occur in most documents).
+Storing this as a regular  matrix would waste a lot of memory.
+In a sparse matrix, only the non-zero entries are stored, as 'simple triplets' of (document, term, frequency). 
+
+As seen in the output of `dim`, Our matrix has only 2 rows (documents) and 6 columns (unqiue words).
+Since this is a rather small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
+
+```{r}
+as.matrix(m)
+```
+
+Stemming and stop word removal
+-----
+
+So, we can see that each word is kept as is. 
+We can reduce the size of the matrix by dropping stop words and stemming:
+(see the create_matrix documentation for the full range of options)
+
+```{r}
+m = create_matrix(input$text, removeStopwords=T, stemWords=T, language='english')
+dim(m)
+as.matrix(m)
+```
+
+As you can see, the stop words (_the_ and _are_) are removed, while the two verb forms of _to eat_ are joined together. 
+
+In RTextTools, the language for stemming and stop words can be given as a parameter, and the default is English.
+Note that stemming works relatively well for English, but is less useful for more highly inflected languages such as Dutch or German. 
+An easy way to see the effects of the preprocessing is by looking at the colSums of a matrix,
+which gives the total frequency of each term:
+
+```{r}
+colSums(as.matrix(m))
+```
+
+For Dutch, the result is less promising:
+
+```{r}
+text = c("De kip eet", "De kippen hebben gegeten")
+m = create_matrix(text, removeStopwords=T, stemWords=T, language="dutch")
+colSums(as.matrix(m))
+```
+
+As you can see, _de_ and _hebben_ are correctly recognized as stop words, but _gegeten_ and _kippen_ have a different stem than _eet_ and _kip_. 
+
+Loading and analysing a larger dataset
+-----
+
+Let's have a look at a more serious example.
+The file `achmea.csv` contains 22 thousand customer reviews, of which around 5 thousand have been manually coded with sentiment. 
+This file can be downloaded from [github](https://raw.githubusercontent.com/vanatteveldt/learningr/master/achmea.csv)
+
+```{r}
+d = read.csv("achmea.csv")
+colnames(d)
+```
+
+For this example, we will only be using the `CONTENT` and `SENTIMENT` columns. 
+We will load it, without stemming but with stopword removal, using `create_matrix`:
+
+```{r}
+m = create_matrix(d$CONTENT, removeStopwords=T, language="dutch")
+dim(m)
+```
+
+Corpus analysis: word frequency
+-----
+
+What are the most frequent words in the corpus? 
+As shown above, we could use the built-in `colSums` function,
+but this requires first casting the sparse matrix to a regular matrix, 
+which we want to avoid (even our relatively small dataset would have 400 million entries!).
+So, we use the `col_sums` function from the `slam` package, which provides the same functionality for sparse matrices:
+
+```{r}
+library(slam)
+freq = col_sums(m)
+# sort the list by reverse frequency using built-in order function:
+freq = freq[order(-freq)]
+head(freq, n=10)
+```
+
+As can be seen, the most frequent terms are all related to Achmea (unsurprisingly).
+It can be useful to compute different metrics per term, such as term frequency, document frequency (how many documents does it occur), and td.idf (term frequency * inverse document frequency, which removes both rare and overly frequent terms). 
+
+To make this easy, let's define a function `term.statistics` to compute this information from a document-term matrix (also available from the [corpustools](http:/github.com/kasperwelbers/corpustools) package)
+
+
+```{r, message=FALSE}
+library(tm)
+term.statistics <- function(dtm) {
+    dtm = dtm[row_sums(dtm) > 0,col_sums(dtm) > 0]    # get rid of empty rows/columns
+    vocabulary = colnames(dtm)
+    data.frame(term = vocabulary,
+               characters = nchar(vocabulary),
+               number = grepl("[0-9]", vocabulary),
+               nonalpha = grepl("\\W", vocabulary),
+               termfreq = col_sums(dtm),
+               docfreq = col_sums(dtm > 0),
+               reldocfreq = col_sums(dtm > 0) / nDocs(dtm),
+               tfidf = tapply(dtm$v/row_sums(dtm)[dtm$i], dtm$j, mean) * log2(nDocs(dtm)/col_sums(dtm > 0)))
+}
+terms = term.statistics(m)
+head(terms)
+```
+
+So, we can remove all words containing numbers and non-alphanumeric characters, and sort by document frequency:
+
+```{r}
+terms = terms[!terms$number & !terms$nonalpha, ]
+terms = terms[order(-terms$termfreq), ]
+head(terms)
+```
+
+This is still not a very useful list, as the top terms occur in too many documents to be informative. So, let's remove all words that occur in more than 10% of documents, and let's also remove all words that occur in less than 10 documents:
+
+```{r}
+terms = terms[terms$reldocfreq < .1 & terms$docfreq > 10, ]
+nrow(terms)
+head(terms)
+```
+
+This seems more useful. We now have 2316 terms left of the original 20 thousand. 
+To create a new document-term matrix with only these terms, index on the right columns:
+
+```{r}
+m_filtered = m[, colnames(m) %in% terms$term]
+dim(m_filtered)
+```
+
+
+As a bonus, using the `wordcloud` package, we can visualize the top words as a word cloud:
+
+```{r, warning=F}
+library(RColorBrewer)
+library(wordcloud)
+pal <- brewer.pal(6,"YlGnBu") # color model
+wordcloud(terms$term[1:100], terms$termfreq[1:100], 
+          scale=c(6,.5), min.freq=1, max.words=Inf, random.order=FALSE, 
+          rot.per=.15, colors=pal)
+```
+
+Comparing corpora
+----
+
+If we have two different corpora, we can see which words are more frequent in each corpus. 
+Let's create two d-t matrices, one containing all positive comments, and one containing all negative comments. 
+
+```{r}
+table(d$SENTIMENT)
+pos = d$CONTENT[!is.na(d$SENTIMENT) & d$SENTIMENT == 1]
+m_pos = create_matrix(pos, removeStopwords=T, language="dutch")
+neg = d$CONTENT[!is.na(d$SENTIMENT) & d$SENTIMENT == -1]
+m_neg = create_matrix(neg, removeStopwords=T, language="dutch")
+```
+
+So, which words are used in positive reviews? Lets make a function to speed it up
+
+```{r}
+wordfreqs = function(m) {freq = col_sums(m); freq[order(-freq)]}
+head(wordfreqs(m_pos))
+```
+
+And what words are used in negative reviews?
+
+```{r}
+head(wordfreqs(m_neg))
+```
+
+For the positive reviews, the words made sense (_goed_, _snel_). The negative contain more general terms, and the term _fbto_ actually occurs in both. 
+
+Can we check which words are more frequent in the negative reviews than in the positive?
+We can define a function `compara.corpora` that makes this comparison by normalizing the term frequencies by dividing by corpus size, and then computing the 'overrepresentation' and the chi-squared statistic (also available from the [corpustools](http:/github.com/kasperwelbers/corpustools) package).
+
+
+```{r}
+chi2 <- function(a,b,c,d) {
+  ooe <- function(o, e) {(o-e)*(o-e) / e}
+  tot = 0.0 + a+b+c+d
+  a = as.numeric(a)
+  b = as.numeric(b)
+  c = as.numeric(c)
+  d = as.numeric(d)
+  (ooe(a, (a+c)*(a+b)/tot)
+   +  ooe(b, (b+d)*(a+b)/tot)
+   +  ooe(c, (a+c)*(c+d)/tot)
+   +  ooe(d, (d+b)*(c+d)/tot))
+}
+
+compare.corpora <- function(dtm.x, dtm.y, smooth=.001) {
+  freqs = term.statistics(dtm.x)[, c("term", "termfreq")]
+  freqs.rel = term.statistics(dtm.y)[, c("term", "termfreq")]
+  f = merge(freqs, freqs.rel, all=T, by="term")    
+  f[is.na(f)] = 0
+  f$relfreq.x = f$termfreq.x / sum(freqs$termfreq)
+  f$relfreq.y = f$termfreq.y / sum(freqs.rel$termfreq)
+  f$over = (f$relfreq.x + smooth) / (f$relfreq.y + smooth)
+  f$chi = chi2(f$termfreq.x, f$termfreq.y, sum(f$termfreq.x) - f$termfreq.x, sum(f$termfreq.y) - f$termfreq.y)
+  f
+}
+
+cmp = compare.corpora(m_pos, m_neg)
+head(cmp)
+```
+
+As you can see, for each term the absolute and relative frequencies are given for both corpora. In this case, `x` is positive and `y` is negative. 
+The 'over' column shows the amount of overrepresentation: a high number indicates that it is relatively more frequent in the x (positive) corpus. 'Chi' is a measure of how unexpected this overrepresentation is: a high number means that it is a very typical term for that corpus.
+
+Let's sort by overrepresentation:
+
+```{r}
+cmp = cmp[order(cmp$over), ]
+head(cmp)
+```
+
+So, the most overrepresented words in the negative corpus are words like _risico_, _beter_, and _maanden_. Note that _beter_ is sort of surprising, a sentiment word list would probably think this is a positive words. 
+
+We can also sort by chi-squared, taking only the underrepresented (negative) words:
+
+```{r}
+neg = cmp[cmp$over < 1, ]
+neg = neg[order(-neg$chi), ]
+head(neg)
+```
+
+As you can see, the list is very comparable, but more frequent terms are generally favoured in the chi-squared approach since the chance of 'accidental' overrepresentation is smaller. 
+
+Let's make a word cloud of the most frequent negative terms:
+
+```{r, warning=F}
+pal <- brewer.pal(6,"YlGnBu") # color model
+wordcloud(neg$term[1:100], neg$chi[1:100], 
+          scale=c(6,.5), min.freq=1, max.words=Inf, random.order=FALSE, 
+          rot.per=.15, colors=pal)
+```
+
+And the positive terms:
+
+```{r, warning=F}
+pos = cmp[cmp$over > 1, ]
+pos = pos[order(-pos$chi), ]
+wordcloud(pos$term[1:100], pos$chi[1:100]^.5, 
+          scale=c(6,.5), min.freq=1, max.words=Inf, random.order=FALSE, 
+          rot.per=.15, colors=pal)
+```
+
+
