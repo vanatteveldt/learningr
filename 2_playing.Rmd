@@ -15,7 +15,7 @@ Playing with data in R
 To demonstrate R, we will use the data from Piketty's 'Capital in the 21st Century' 
 
 ```{r}
-download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/income_topdecile.csv", 
+download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/income_topdecile.csv", 
               destfile="income_topdecile.csv")
 income = read.csv("income_topdecile.csv")
 ```
