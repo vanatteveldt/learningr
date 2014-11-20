@@ -73,7 +73,7 @@ Let's do a t-test to see if the difference is significant:
 t.test(income$U.S., income$Europe, paired=T)
 ```
 
-So, with p<.02 we can conclude that the income distribution in the U.S. is more unequal than in Europe. 
+So, with p<.05 we can conclude that the income distribution in the U.S. is more unequal than in Europe. 
 Let's make a simple plot of the income inequality in the U.S. and Europe
 (reproducing fig 9.8 on page 324)
 
