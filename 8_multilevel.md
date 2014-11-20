@@ -1,8 +1,7 @@
 
 ```
-## (C) (cc by-sa) Wouter van Atteveldt & Jan Kleinnijenhuis, file generated juni 06 2014
+## (C) (cc by-sa) Wouter van Atteveldt & Jan Kleinnijenhuis, file generated June 06 2014
 ```
-
 
 
 Multilevel Modeling with R
@@ -21,7 +20,7 @@ let's take the textbook data of Joop Hox on popularity of pupils in schools:
 
 ```r
 library(foreign)
-popdata <- read.dta("http://www.ats.ucla.edu/stat/stata/examples/mlm_ma_hox/popular.dta")
+popdata<-read.dta("http://www.ats.ucla.edu/stat/stata/examples/mlm_ma_hox/popular.dta")
 head(popdata)
 ```
 
@@ -35,14 +34,13 @@ head(popdata)
 ## 6     6      1       7  boy   24     1        7
 ```
 
-
 Now, we can model a time series model with only the random intercept at the school level:
 
 
 
 ```r
 library(nlme)
-m = lme(popular ~ sex + texp, random = ~1 | school, popdata)
+m = lme(popular ~ sex + texp, random=~1|school, popdata)
 summary(m)
 ```
 
@@ -75,14 +73,13 @@ summary(m)
 ## Number of Groups: 100
 ```
 
-
 So, popularity of a course is determined by both gender and teacher experience. 
 Let's try a varying slopes model, with teacher experience also differing per school,
 and see whether that is a significant improvement:
 
 
 ```r
-m2 = lme(popular ~ sex + texp, random = ~texp | school, popdata)
+m2 = lme(popular ~ sex + texp, random=~texp|school, popdata)
 anova(m, m2)
 ```
 
@@ -91,7 +88,6 @@ anova(m, m2)
 ## m      1  5 4454 4482  -2222                       
 ## m2     2  7 4456 4496  -2221 1 vs 2   1.915  0.3838
 ```
-
 
 So, although the log likelihood of m2 is slightly better, it also uses more degrees of freedom and the BIC is higher, 
 indicating a worse model. The `anova` output means that this change is not significant. 
@@ -103,22 +99,19 @@ First, take a random sample of 12 schools from the list of unique school ids:
 
 
 ```r
-schools = sample(unique(popdata$school), size = 12, replace = F)
+schools = sample(unique(popdata$school), size=12, replace=F)
 sample = popdata[popdata$school %in% schools, ]
 ```
-
 
 Now, we can use the `xyplot` function from the `lattice` package:
 
 
 ```r
 library(lattice)
-xyplot(popular ~ sex | as.factor(school), type = c("p", "g", "r"), col.line = "black", 
-    data = sample)
+xyplot(popular~sex|as.factor(school),type=c("p","g","r"), col.line="black", data=sample)
 ```
 
 ![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
-
 
 So, (at least in my sample) there is considerable variation: in some schools gender has almost no effect,
 but in other schools the slope is relatively steep and generally positive (meaning girls have higher popularity).
@@ -126,7 +119,17 @@ Let's test whether a model with a random slope on gender is a significant improv
 
 
 ```r
-m2 = lme(popular ~ sex + texp, random = ~sex | school, popdata)
+library(texreg)
+```
+
+```
+## Version:  1.32
+## Date:     2014-05-01
+## Author:   Philip Leifeld (University of Konstanz)
+```
+
+```r
+m2 = lme(popular ~ sex + texp, random=~sex|school, popdata)
 anova(m, m2)
 ```
 
@@ -141,9 +144,25 @@ screenreg(list(m, m2))
 ```
 
 ```
-## Error: could not find function "screenreg"
+## 
+## ==========================================
+##                 Model 1       Model 2     
+## ------------------------------------------
+## (Intercept)         3.56 ***      3.34 ***
+##                    (0.17)        (0.16)   
+## sexgirl             0.84 ***      0.84 ***
+##                    (0.03)        (0.06)   
+## texp                0.09 ***      0.11 ***
+##                    (0.01)        (0.01)   
+## ------------------------------------------
+## AIC              4454.36       4289.89    
+## BIC              4482.36       4329.09    
+## Log Likelihood  -2222.18      -2137.95    
+## Num. obs.        2000          2000       
+## Num. groups       100           100       
+## ==========================================
+## *** p < 0.001, ** p < 0.01, * p < 0.05
 ```
-
 
 So, `m2` is indeed a significant improvement. 
 
@@ -171,10 +190,10 @@ library(lme4)
 ```
 
 ```r
-popdata$dich = cut(popdata$popular, 2, labels = c("lo", "hi"))
+popdata$dich = cut(popdata$popular, 2, labels=c("lo","hi"))
 
-m = glmer(dich ~ sex + (1 | school), popdata, family = "binomial")
-m2 = glmer(dich ~ sex + (1 + sex | school), popdata, family = "binomial")
+m = glmer(dich ~ sex + (1|school), popdata, family="binomial")
+m2 = glmer(dich ~ sex + (1 + sex|school), popdata, family="binomial")
 summary(m2)
 ```
 
@@ -226,7 +245,6 @@ anova(m, m2)
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
 
-
 If we would like to see for which schools the effect of gender were the strongest, 
 we can use the `ranef` function to get the intercepts and slopes per group, and order them by slope:
 
@@ -260,4 +278,3 @@ tail(effects)
 ## 54     -0.4788   2.132
 ## 52     -0.4730   2.362
 ```
-

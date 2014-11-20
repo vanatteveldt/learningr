@@ -65,6 +65,7 @@ but in other schools the slope is relatively steep and generally positive (meani
 Let's test whether a model with a random slope on gender is a significant improvement:
 
 ```{r}
+library(texreg)
 m2 = lme(popular ~ sex + texp, random=~sex|school, popdata)
 anova(m, m2)
 screenreg(list(m, m2))
