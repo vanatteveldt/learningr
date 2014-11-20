@@ -32,6 +32,14 @@ General Howto's
 Dealing with textual data
 ----
 
+  - [Corpus Analysis: Term Document Matrices](https://rawgit.com/vanatteveldt/learningr/master/text_1_corpus.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/text_1_corpus.Rmd))
+  - [LDA topic modeling](https://rawgit.com/vanatteveldt/learningr/master/text_2_lda.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/text_2_lda.Rmd))
+  - [Lemmatization](https://rawgit.com/vanatteveldt/learningr/master/text_3_lemma.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/text_3_lemma.Rmd))
+  - [Machine Learning with RTextTools](https://rawgit.com/vanatteveldt/learningr/master/text_4_texttools.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/text_4_texttools.Rmd))
+
+
+For textual data, we have also developed two R packages to [communicate with the AmCAT text analysis framework](http://github.com/amcat/amcat-r) and to [deal with corpus analysis and topic models](http://github/com/kasperwelbers/corpustools). See the following howto's from these packages:
+
 - [Querying AmCAT](https://rawgit.com/amcat/amcat-r/master/howto/howto_query.html) ([source](https://github.com/amcat/amcat-r/blob/master/howto/howto_query.Rmd))
 - [Document-Term Matrices](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_create_dtm.md) ([source](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_create_dtm.Rmd))
 - [LDA Topic Models](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_latent_dirichlet_allocation.md) ([source](https://github.com/kasperwelbers/corpus-tools/blob/master/howto/howto_latent_dirichlet_allocation.Rmd))
