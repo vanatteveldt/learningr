@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<!-- saved from url=(0014)about:internet -->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="x-ua-compatible" content="IE=9" >
+
+<title>Machine Learning using RTextTools</title>
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 12px;
+   margin: 8px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 { 
+   font-size:2.2em; 
+}
+
+h2 { 
+   font-size:1.8em; 
+}
+
+h3 { 
+   font-size:1.4em; 
+}
+
+h4 { 
+   font-size:1.0em; 
+}
+
+h5 { 
+   font-size:0.9em; 
+}
+
+h6 { 
+   font-size:0.8em; 
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre {	
+   margin-top: 0;
+   max-width: 95%;
+   border: 1px solid #ccc;
+   white-space: pre-wrap;
+}
+
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code.r, code.cpp {
+   background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * { 
+      background: transparent !important; 
+      color: black !important; 
+      filter:none !important; 
+      -ms-filter: none !important; 
+   }
+
+   body { 
+      font-size:12pt; 
+      max-width:100%; 
+   }
+       
+   a, a:visited { 
+      text-decoration: underline; 
+   }
+
+   hr { 
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote { 
+      padding-right: 1em; 
+      page-break-inside: avoid; 
+   }
+
+   tr, img { 
+      page-break-inside: avoid; 
+   }
+
+   img { 
+      max-width: 100% !important; 
+   }
+
+   @page :left { 
+      margin: 15mm 20mm 15mm 10mm; 
+   }
+     
+   @page :right { 
+      margin: 15mm 10mm 15mm 20mm; 
+   }
+
+   p, h2, h3 { 
+      orphans: 3; widows: 3; 
+   }
+
+   h2, h3 { 
+      page-break-after: avoid; 
+   }
+}
+
+</style>
+
+<!-- Styles for R syntax highlighter -->
+<style type="text/css">
+   pre .operator,
+   pre .paren {
+     color: rgb(104, 118, 135)
+   }
+
+   pre .literal {
+     color: rgb(88, 72, 246)
+   }
+
+   pre .number {
+     color: rgb(0, 0, 205);
+   }
+
+   pre .comment {
+     color: rgb(76, 136, 107);
+   }
+
+   pre .keyword {
+     color: rgb(0, 0, 255);
+   }
+
+   pre .identifier {
+     color: rgb(0, 0, 0);
+   }
+
+   pre .string {
+     color: rgb(3, 106, 7);
+   }
+</style>
+
+<!-- R syntax highlighter -->
+<script type="text/javascript">
+var hljs=new function(){function m(p){return p.replace(/&/gm,"&amp;").replace(/</gm,"&lt;")}function f(r,q,p){return RegExp(q,"m"+(r.cI?"i":"")+(p?"g":""))}function b(r){for(var p=0;p<r.childNodes.length;p++){var q=r.childNodes[p];if(q.nodeName=="CODE"){return q}if(!(q.nodeType==3&&q.nodeValue.match(/\s+/))){break}}}function h(t,s){var p="";for(var r=0;r<t.childNodes.length;r++){if(t.childNodes[r].nodeType==3){var q=t.childNodes[r].nodeValue;if(s){q=q.replace(/\n/g,"")}p+=q}else{if(t.childNodes[r].nodeName=="BR"){p+="\n"}else{p+=h(t.childNodes[r])}}}if(/MSIE [678]/.test(navigator.userAgent)){p=p.replace(/\r/g,"\n")}return p}function a(s){var r=s.className.split(/\s+/);r=r.concat(s.parentNode.className.split(/\s+/));for(var q=0;q<r.length;q++){var p=r[q].replace(/^language-/,"");if(e[p]){return p}}}function c(q){var p=[];(function(s,t){for(var r=0;r<s.childNodes.length;r++){if(s.childNodes[r].nodeType==3){t+=s.childNodes[r].nodeValue.length}else{if(s.childNodes[r].nodeName=="BR"){t+=1}else{if(s.childNodes[r].nodeType==1){p.push({event:"start",offset:t,node:s.childNodes[r]});t=arguments.callee(s.childNodes[r],t);p.push({event:"stop",offset:t,node:s.childNodes[r]})}}}}return t})(q,0);return p}function k(y,w,x){var q=0;var z="";var s=[];function u(){if(y.length&&w.length){if(y[0].offset!=w[0].offset){return(y[0].offset<w[0].offset)?y:w}else{return w[0].event=="start"?y:w}}else{return y.length?y:w}}function t(D){var A="<"+D.nodeName.toLowerCase();for(var B=0;B<D.attributes.length;B++){var C=D.attributes[B];A+=" "+C.nodeName.toLowerCase();if(C.value!==undefined&&C.value!==false&&C.value!==null){A+='="'+m(C.value)+'"'}}return A+">"}while(y.length||w.length){var v=u().splice(0,1)[0];z+=m(x.substr(q,v.offset-q));q=v.offset;if(v.event=="start"){z+=t(v.node);s.push(v.node)}else{if(v.event=="stop"){var p,r=s.length;do{r--;p=s[r];z+=("</"+p.nodeName.toLowerCase()+">")}while(p!=v.node);s.splice(r,1);while(r<s.length){z+=t(s[r]);r++}}}}return z+m(x.substr(q))}function j(){function q(x,y,v){if(x.compiled){return}var u;var s=[];if(x.k){x.lR=f(y,x.l||hljs.IR,true);for(var w in x.k){if(!x.k.hasOwnProperty(w)){continue}if(x.k[w] instanceof Object){u=x.k[w]}else{u=x.k;w="keyword"}for(var r in u){if(!u.hasOwnProperty(r)){continue}x.k[r]=[w,u[r]];s.push(r)}}}if(!v){if(x.bWK){x.b="\\b("+s.join("|")+")\\s"}x.bR=f(y,x.b?x.b:"\\B|\\b");if(!x.e&&!x.eW){x.e="\\B|\\b"}if(x.e){x.eR=f(y,x.e)}}if(x.i){x.iR=f(y,x.i)}if(x.r===undefined){x.r=1}if(!x.c){x.c=[]}x.compiled=true;for(var t=0;t<x.c.length;t++){if(x.c[t]=="self"){x.c[t]=x}q(x.c[t],y,false)}if(x.starts){q(x.starts,y,false)}}for(var p in e){if(!e.hasOwnProperty(p)){continue}q(e[p].dM,e[p],true)}}function d(B,C){if(!j.called){j();j.called=true}function q(r,M){for(var L=0;L<M.c.length;L++){if((M.c[L].bR.exec(r)||[null])[0]==r){return M.c[L]}}}function v(L,r){if(D[L].e&&D[L].eR.test(r)){return 1}if(D[L].eW){var M=v(L-1,r);return M?M+1:0}return 0}function w(r,L){return L.i&&L.iR.test(r)}function K(N,O){var M=[];for(var L=0;L<N.c.length;L++){M.push(N.c[L].b)}var r=D.length-1;do{if(D[r].e){M.push(D[r].e)}r--}while(D[r+1].eW);if(N.i){M.push(N.i)}return f(O,M.join("|"),true)}function p(M,L){var N=D[D.length-1];if(!N.t){N.t=K(N,E)}N.t.lastIndex=L;var r=N.t.exec(M);return r?[M.substr(L,r.index-L),r[0],false]:[M.substr(L),"",true]}function z(N,r){var L=E.cI?r[0].toLowerCase():r[0];var M=N.k[L];if(M&&M instanceof Array){return M}return false}function F(L,P){L=m(L);if(!P.k){return L}var r="";var O=0;P.lR.lastIndex=0;var M=P.lR.exec(L);while(M){r+=L.substr(O,M.index-O);var N=z(P,M);if(N){x+=N[1];r+='<span class="'+N[0]+'">'+M[0]+"</span>"}else{r+=M[0]}O=P.lR.lastIndex;M=P.lR.exec(L)}return r+L.substr(O,L.length-O)}function J(L,M){if(M.sL&&e[M.sL]){var r=d(M.sL,L);x+=r.keyword_count;return r.value}else{return F(L,M)}}function I(M,r){var L=M.cN?'<span class="'+M.cN+'">':"";if(M.rB){y+=L;M.buffer=""}else{if(M.eB){y+=m(r)+L;M.buffer=""}else{y+=L;M.buffer=r}}D.push(M);A+=M.r}function G(N,M,Q){var R=D[D.length-1];if(Q){y+=J(R.buffer+N,R);return false}var P=q(M,R);if(P){y+=J(R.buffer+N,R);I(P,M);return P.rB}var L=v(D.length-1,M);if(L){var O=R.cN?"</span>":"";if(R.rE){y+=J(R.buffer+N,R)+O}else{if(R.eE){y+=J(R.buffer+N,R)+O+m(M)}else{y+=J(R.buffer+N+M,R)+O}}while(L>1){O=D[D.length-2].cN?"</span>":"";y+=O;L--;D.length--}var r=D[D.length-1];D.length--;D[D.length-1].buffer="";if(r.starts){I(r.starts,"")}return R.rE}if(w(M,R)){throw"Illegal"}}var E=e[B];var D=[E.dM];var A=0;var x=0;var y="";try{var s,u=0;E.dM.buffer="";do{s=p(C,u);var t=G(s[0],s[1],s[2]);u+=s[0].length;if(!t){u+=s[1].length}}while(!s[2]);if(D.length>1){throw"Illegal"}return{r:A,keyword_count:x,value:y}}catch(H){if(H=="Illegal"){return{r:0,keyword_count:0,value:m(C)}}else{throw H}}}function g(t){var p={keyword_count:0,r:0,value:m(t)};var r=p;for(var q in e){if(!e.hasOwnProperty(q)){continue}var s=d(q,t);s.language=q;if(s.keyword_count+s.r>r.keyword_count+r.r){r=s}if(s.keyword_count+s.r>p.keyword_count+p.r){r=p;p=s}}if(r.language){p.second_best=r}return p}function i(r,q,p){if(q){r=r.replace(/^((<[^>]+>|\t)+)/gm,function(t,w,v,u){return w.replace(/\t/g,q)})}if(p){r=r.replace(/\n/g,"<br>")}return r}function n(t,w,r){var x=h(t,r);var v=a(t);var y,s;if(v){y=d(v,x)}else{return}var q=c(t);if(q.length){s=document.createElement("pre");s.innerHTML=y.value;y.value=k(q,c(s),x)}y.value=i(y.value,w,r);var u=t.className;if(!u.match("(\\s|^)(language-)?"+v+"(\\s|$)")){u=u?(u+" "+v):v}if(/MSIE [678]/.test(navigator.userAgent)&&t.tagName=="CODE"&&t.parentNode.tagName=="PRE"){s=t.parentNode;var p=document.createElement("div");p.innerHTML="<pre><code>"+y.value+"</code></pre>";t=p.firstChild.firstChild;p.firstChild.cN=s.cN;s.parentNode.replaceChild(p.firstChild,s)}else{t.innerHTML=y.value}t.className=u;t.result={language:v,kw:y.keyword_count,re:y.r};if(y.second_best){t.second_best={language:y.second_best.language,kw:y.second_best.keyword_count,re:y.second_best.r}}}function o(){if(o.called){return}o.called=true;var r=document.getElementsByTagName("pre");for(var p=0;p<r.length;p++){var q=b(r[p]);if(q){n(q,hljs.tabReplace)}}}function l(){if(window.addEventListener){window.addEventListener("DOMContentLoaded",o,false);window.addEventListener("load",o,false)}else{if(window.attachEvent){window.attachEvent("onload",o)}else{window.onload=o}}}var e={};this.LANGUAGES=e;this.highlight=d;this.highlightAuto=g;this.fixMarkup=i;this.highlightBlock=n;this.initHighlighting=o;this.initHighlightingOnLoad=l;this.IR="[a-zA-Z][a-zA-Z0-9_]*";this.UIR="[a-zA-Z_][a-zA-Z0-9_]*";this.NR="\\b\\d+(\\.\\d+)?";this.CNR="\\b(0[xX][a-fA-F0-9]+|(\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?)";this.BNR="\\b(0b[01]+)";this.RSR="!|!=|!==|%|%=|&|&&|&=|\\*|\\*=|\\+|\\+=|,|\\.|-|-=|/|/=|:|;|<|<<|<<=|<=|=|==|===|>|>=|>>|>>=|>>>|>>>=|\\?|\\[|\\{|\\(|\\^|\\^=|\\||\\|=|\\|\\||~";this.ER="(?![\\s\\S])";this.BE={b:"\\\\.",r:0};this.ASM={cN:"string",b:"'",e:"'",i:"\\n",c:[this.BE],r:0};this.QSM={cN:"string",b:'"',e:'"',i:"\\n",c:[this.BE],r:0};this.CLCM={cN:"comment",b:"//",e:"$"};this.CBLCLM={cN:"comment",b:"/\\*",e:"\\*/"};this.HCM={cN:"comment",b:"#",e:"$"};this.NM={cN:"number",b:this.NR,r:0};this.CNM={cN:"number",b:this.CNR,r:0};this.BNM={cN:"number",b:this.BNR,r:0};this.inherit=function(r,s){var p={};for(var q in r){p[q]=r[q]}if(s){for(var q in s){p[q]=s[q]}}return p}}();hljs.LANGUAGES.cpp=function(){var a={keyword:{"false":1,"int":1,"float":1,"while":1,"private":1,"char":1,"catch":1,"export":1,virtual:1,operator:2,sizeof:2,dynamic_cast:2,typedef:2,const_cast:2,"const":1,struct:1,"for":1,static_cast:2,union:1,namespace:1,unsigned:1,"long":1,"throw":1,"volatile":2,"static":1,"protected":1,bool:1,template:1,mutable:1,"if":1,"public":1,friend:2,"do":1,"return":1,"goto":1,auto:1,"void":2,"enum":1,"else":1,"break":1,"new":1,extern:1,using:1,"true":1,"class":1,asm:1,"case":1,typeid:1,"short":1,reinterpret_cast:2,"default":1,"double":1,register:1,explicit:1,signed:1,typename:1,"try":1,"this":1,"switch":1,"continue":1,wchar_t:1,inline:1,"delete":1,alignof:1,char16_t:1,char32_t:1,constexpr:1,decltype:1,noexcept:1,nullptr:1,static_assert:1,thread_local:1,restrict:1,_Bool:1,complex:1},built_in:{std:1,string:1,cin:1,cout:1,cerr:1,clog:1,stringstream:1,istringstream:1,ostringstream:1,auto_ptr:1,deque:1,list:1,queue:1,stack:1,vector:1,map:1,set:1,bitset:1,multiset:1,multimap:1,unordered_set:1,unordered_map:1,unordered_multiset:1,unordered_multimap:1,array:1,shared_ptr:1}};return{dM:{k:a,i:"</",c:[hljs.CLCM,hljs.CBLCLM,hljs.QSM,{cN:"string",b:"'\\\\?.",e:"'",i:"."},{cN:"number",b:"\\b(\\d+(\\.\\d*)?|\\.\\d+)(u|U|l|L|ul|UL|f|F)"},hljs.CNM,{cN:"preprocessor",b:"#",e:"$"},{cN:"stl_container",b:"\\b(deque|list|queue|stack|vector|map|set|bitset|multiset|multimap|unordered_map|unordered_set|unordered_multiset|unordered_multimap|array)\\s*<",e:">",k:a,r:10,c:["self"]}]}}}();hljs.LANGUAGES.r={dM:{c:[hljs.HCM,{cN:"number",b:"\\b0[xX][0-9a-fA-F]+[Li]?\\b",e:hljs.IMMEDIATE_RE,r:0},{cN:"number",b:"\\b\\d+(?:[eE][+\\-]?\\d*)?L\\b",e:hljs.IMMEDIATE_RE,r:0},{cN:"number",b:"\\b\\d+\\.(?!\\d)(?:i\\b)?",e:hljs.IMMEDIATE_RE,r:1},{cN:"number",b:"\\b\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d*)?i?\\b",e:hljs.IMMEDIATE_RE,r:0},{cN:"number",b:"\\.\\d+(?:[eE][+\\-]?\\d*)?i?\\b",e:hljs.IMMEDIATE_RE,r:1},{cN:"keyword",b:"(?:tryCatch|library|setGeneric|setGroupGeneric)\\b",e:hljs.IMMEDIATE_RE,r:10},{cN:"keyword",b:"\\.\\.\\.",e:hljs.IMMEDIATE_RE,r:10},{cN:"keyword",b:"\\.\\.\\d+(?![\\w.])",e:hljs.IMMEDIATE_RE,r:10},{cN:"keyword",b:"\\b(?:function)",e:hljs.IMMEDIATE_RE,r:2},{cN:"keyword",b:"(?:if|in|break|next|repeat|else|for|return|switch|while|try|stop|warning|require|attach|detach|source|setMethod|setClass)\\b",e:hljs.IMMEDIATE_RE,r:1},{cN:"literal",b:"(?:NA|NA_integer_|NA_real_|NA_character_|NA_complex_)\\b",e:hljs.IMMEDIATE_RE,r:10},{cN:"literal",b:"(?:NULL|TRUE|FALSE|T|F|Inf|NaN)\\b",e:hljs.IMMEDIATE_RE,r:1},{cN:"identifier",b:"[a-zA-Z.][a-zA-Z0-9._]*\\b",e:hljs.IMMEDIATE_RE,r:0},{cN:"operator",b:"<\\-(?!\\s*\\d)",e:hljs.IMMEDIATE_RE,r:2},{cN:"operator",b:"\\->|<\\-",e:hljs.IMMEDIATE_RE,r:1},{cN:"operator",b:"%%|~",e:hljs.IMMEDIATE_RE},{cN:"operator",b:">=|<=|==|!=|\\|\\||&&|=|\\+|\\-|\\*|/|\\^|>|<|!|&|\\||\\$|:",e:hljs.IMMEDIATE_RE,r:0},{cN:"operator",b:"%",e:"%",i:"\\n",r:1},{cN:"identifier",b:"`",e:"`",r:0},{cN:"string",b:'"',e:'"',c:[hljs.BE],r:0},{cN:"string",b:"'",e:"'",c:[hljs.BE],r:0},{cN:"paren",b:"[[({\\])}]",e:hljs.IMMEDIATE_RE,r:0}]}};
+hljs.initHighlightingOnLoad();
+</script>
+
+
+
+
+</head>
+
+<body>
+<h1>Machine Learning using RTextTools</h1>
+
+<p><em>&copy; 2014 Wouter van Atteveldt, license: [CC-BY-SA]</em></p>
+
+<p>Machine Learning or automatic text classification is a set of techniques to train a statistical model on a set of annotated (coded) training texts, that can then be used to predict the category or class of new texts.</p>
+
+<p>R has a number of different packages for various machine learning algorithm such as maximum entropy modeling, neural networks, and support vector machines. 
+<code>RTextTools</code> provides an easy way to access a large number of these algorithms.</p>
+
+<p>In principle, like &#39;classical&#39; statistical models, machine learning uses a number of (independent) variables called <em>features</em> to predict a target (dependent) category or class. 
+In text mining, the independent variables are generally the term frequencies, and as such the input for the machine learning is the document-term matrix. </p>
+
+<h2>Training models using RTextTools</h2>
+
+<p>So, the first step is to create a document-term matrix. 
+We only want to use the documents for which the sentiment is known (for now).
+As before, we use the <code>achmea.csv</code> that can be downloaded from <a href="https://raw.githubusercontent.com/vanatteveldt/learningr/master/achmea.csv">github</a>.</p>
+
+<pre><code class="r">library(RTextTools)
+</code></pre>
+
+<pre><code>## Loading required package: SparseM
+## 
+## Attaching package: &#39;SparseM&#39;
+## 
+## The following object is masked from &#39;package:base&#39;:
+## 
+##     backsolve
+</code></pre>
+
+<pre><code class="r">d = read.csv(&quot;achmea.csv&quot;)
+ds = d[!is.na(d$SENTIMENT), ]
+m = create_matrix(ds$CONTENT, language=&quot;dutch&quot;, stemWords=F)
+</code></pre>
+
+<p>The next step is to create the RTextTools <em>container</em>. 
+This contains both the d-t matrix and the manually coded classes,
+and you specify which parts to use for training and which for testing.</p>
+
+<p>To make sure that we get a random sample of documents for training and testing,
+we sample 80% of the set for training and the remainder for testing.
+(Note that it is important to sort the indices as otherwise GLMNET will fail)</p>
+
+<pre><code class="r">n = nrow(m)
+train = sort(sample(1:n, n*.8))
+test = sort(setdiff(1:n, train))
+length(train)
+</code></pre>
+
+<pre><code>## [1] 4252
+</code></pre>
+
+<pre><code class="r">length(test)
+</code></pre>
+
+<pre><code>## [1] 1063
+</code></pre>
+
+<p>Now, we are ready to create the container:</p>
+
+<pre><code class="r">c = create_container(m, ds$SENTIMENT, trainSize=train, testSize=test, virgin=F)
+</code></pre>
+
+<p>Using this container, we can train different models:</p>
+
+<pre><code class="r">SVM &lt;- train_model(c,&quot;SVM&quot;)
+MAXENT &lt;- train_model(c,&quot;MAXENT&quot;)
+GLMNET &lt;- train_model(c,&quot;GLMNET&quot;)
+</code></pre>
+
+<h2>Testing model performance</h2>
+
+<p>Using the same container, we can classify the &#39;test&#39; dataset</p>
+
+<pre><code class="r">SVM_CLASSIFY &lt;- classify_model(c, SVM)
+MAXENT_CLASSIFY &lt;- classify_model(c, MAXENT)
+GLMNET_CLASSIFY &lt;- classify_model(c, GLMNET)
+</code></pre>
+
+<p>Let&#39;s have a look at what these classifications yield:</p>
+
+<pre><code class="r">head(SVM_CLASSIFY)
+</code></pre>
+
+<pre><code>##   SVM_LABEL SVM_PROB
+## 1         1   0.9584
+## 2         1   0.9967
+## 3         1   0.9829
+## 4         1   0.9049
+## 5         1   0.9261
+## 6         1   0.7481
+</code></pre>
+
+<pre><code class="r">nrow(SVM_CLASSIFY)
+</code></pre>
+
+<pre><code>## [1] 1063
+</code></pre>
+
+<p>For each document in the test set, the predicted label and probability are given. 
+We can compare these predictions to the correct classes manually:</p>
+
+<pre><code class="r">t = table(SVM_CLASSIFY$SVM_LABEL, as.character(ds$SENTIMENT[test]))
+t
+</code></pre>
+
+<pre><code>##     
+##        1  -1
+##   1  552  95
+##   -1  61 355
+</code></pre>
+
+<p>(Note that the as.character cast is necessary to align the rows and columns)
+And compute the accuracy:</p>
+
+<pre><code class="r">sum(diag(t)) / sum(t)
+</code></pre>
+
+<pre><code>## [1] 0.8532
+</code></pre>
+
+<h2>Analytics</h2>
+
+<p>To make it easier to compute the relevant metrics, RTextTools has a built-in analytics function:</p>
+
+<pre><code class="r">analytics &lt;- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
+names(attributes(analytics))
+</code></pre>
+
+<pre><code>## [1] &quot;label_summary&quot;     &quot;document_summary&quot;  &quot;algorithm_summary&quot;
+## [4] &quot;ensemble_summary&quot;  &quot;class&quot;
+</code></pre>
+
+<p>The <code>algorithm_summary</code> gives the performance of the various algorithms, with precision, recall, and f-score given per algorithm:</p>
+
+<pre><code class="r">analytics@algorithm_summary
+</code></pre>
+
+<pre><code>##    SVM_PRECISION SVM_RECALL SVM_FSCORE GLMNET_PRECISION GLMNET_RECALL
+## -1          0.85       0.79       0.82             0.86          0.69
+## 1           0.85       0.90       0.87             0.80          0.92
+##    GLMNET_FSCORE MAXENTROPY_PRECISION MAXENTROPY_RECALL MAXENTROPY_FSCORE
+## -1          0.77                 0.74              0.78              0.76
+## 1           0.86                 0.84              0.80              0.82
+</code></pre>
+
+<p>The <code>label_summary</code> gives the performance per label (class):</p>
+
+<pre><code class="r">analytics@label_summary
+</code></pre>
+
+<pre><code>##    NUM_MANUALLY_CODED NUM_CONSENSUS_CODED NUM_PROBABILITY_CODED
+## -1                450                 398                   445
+## 1                 613                 665                   618
+##    PCT_CONSENSUS_CODED PCT_PROBABILITY_CODED PCT_CORRECTLY_CODED_CONSENSUS
+## -1               88.44                 98.89                         76.44
+## 1               108.48                100.82                         91.19
+##    PCT_CORRECTLY_CODED_PROBABILITY
+## -1                           76.89
+## 1                            83.85
+</code></pre>
+
+<p>Finally, the <code>ensemble_summary</code> gives an indication of how performance changes based on the amount of classifiers that agree on the classification:</p>
+
+<pre><code class="r">analytics@ensemble_summary
+</code></pre>
+
+<pre><code>##        n-ENSEMBLE COVERAGE n-ENSEMBLE RECALL
+## n &gt;= 1                1.00              0.85
+## n &gt;= 2                1.00              0.85
+## n &gt;= 3                0.77              0.90
+</code></pre>
+
+<p>The last attribute, <code>document_summary</code>, contains the classifications of the various algorithms per document, and also lists how many agree and whether the consensus and the highest probability classifier where correct:</p>
+
+<pre><code class="r">head(analytics@document_summary)
+</code></pre>
+
+<pre><code>##   SVM_LABEL SVM_PROB GLMNET_LABEL GLMNET_PROB MAXENTROPY_LABEL
+## 1         1   0.9584            1      0.9658                1
+## 2         1   0.9967            1      0.9903                1
+## 3         1   0.9829            1      0.9573                1
+## 4         1   0.9049            1      0.8988                1
+## 5         1   0.9261            1      0.7553                1
+## 6         1   0.7481            1      0.8328                1
+##   MAXENTROPY_PROB MANUAL_CODE CONSENSUS_CODE CONSENSUS_AGREE
+## 1          1.0000           1              1               3
+## 2          1.0000           1              1               3
+## 3          1.0000           1              1               3
+## 4          1.0000           1              1               3
+## 5          0.9994           1              1               3
+## 6          1.0000           1              1               3
+##   CONSENSUS_INCORRECT PROBABILITY_CODE PROBABILITY_INCORRECT
+## 1                   0                1                     0
+## 2                   0                1                     0
+## 3                   0                1                     0
+## 4                   0                1                     0
+## 5                   0                1                     0
+## 6                   0                1                     0
+</code></pre>
+
+<h2>Classifying new material</h2>
+
+<p>New material (called &#39;virgin data&#39; in RTextTools) can be coded by placing the old and new material in a single container. 
+We now set all documents with a sentiment score as training material, and specify <code>virgin=T</code> to indicate that we don&#39;t have coded classes on the test material:</p>
+
+<pre><code class="r">m_full = create_matrix(d$CONTENT, language=&quot;dutch&quot;, stemWords=F)
+coded = which(!is.na(d$SENTIMENT))
+c_full = create_container(m_full, d$SENTIMENT, trainSize=coded, virgin=T)
+</code></pre>
+
+<p>We can now build and test the model as before:</p>
+
+<pre><code class="r">SVM &lt;- train_model(c_full,&quot;SVM&quot;)
+MAXENT &lt;- train_model(c_full,&quot;MAXENT&quot;)
+GLMNET &lt;- train_model(c_full,&quot;GLMNET&quot;)
+SVM_CLASSIFY &lt;- classify_model(c_full, SVM)
+MAXENT_CLASSIFY &lt;- classify_model(c_full, MAXENT)
+GLMNET_CLASSIFY &lt;- classify_model(c_full, GLMNET)
+analytics &lt;- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
+</code></pre>
+
+<pre><code>## Error: all arguments must have the same length
+</code></pre>
+
+<pre><code class="r">names(attributes(analytics))
+</code></pre>
+
+<pre><code>## [1] &quot;label_summary&quot;     &quot;document_summary&quot;  &quot;algorithm_summary&quot;
+## [4] &quot;ensemble_summary&quot;  &quot;class&quot;
+</code></pre>
+
+<p>As you can see, the analytics now only has the <code>label_summary</code> and <code>document_summary</code>:</p>
+
+<pre><code class="r">analytics@label_summary
+</code></pre>
+
+<pre><code>##    NUM_MANUALLY_CODED NUM_CONSENSUS_CODED NUM_PROBABILITY_CODED
+## -1                450                 398                   445
+## 1                 613                 665                   618
+##    PCT_CONSENSUS_CODED PCT_PROBABILITY_CODED PCT_CORRECTLY_CODED_CONSENSUS
+## -1               88.44                 98.89                         76.44
+## 1               108.48                100.82                         91.19
+##    PCT_CORRECTLY_CODED_PROBABILITY
+## -1                           76.89
+## 1                            83.85
+</code></pre>
+
+<pre><code class="r">head(analytics@document_summary)
+</code></pre>
+
+<pre><code>##   SVM_LABEL SVM_PROB GLMNET_LABEL GLMNET_PROB MAXENTROPY_LABEL
+## 1         1   0.9584            1      0.9658                1
+## 2         1   0.9967            1      0.9903                1
+## 3         1   0.9829            1      0.9573                1
+## 4         1   0.9049            1      0.8988                1
+## 5         1   0.9261            1      0.7553                1
+## 6         1   0.7481            1      0.8328                1
+##   MAXENTROPY_PROB MANUAL_CODE CONSENSUS_CODE CONSENSUS_AGREE
+## 1          1.0000           1              1               3
+## 2          1.0000           1              1               3
+## 3          1.0000           1              1               3
+## 4          1.0000           1              1               3
+## 5          0.9994           1              1               3
+## 6          1.0000           1              1               3
+##   CONSENSUS_INCORRECT PROBABILITY_CODE PROBABILITY_INCORRECT
+## 1                   0                1                     0
+## 2                   0                1                     0
+## 3                   0                1                     0
+## 4                   0                1                     0
+## 5                   0                1                     0
+## 6                   0                1                     0
+</code></pre>
+
+<p>The label summary now only contains an overview of how many where coded using consensus and probability. The document_summary lists the output of all algorithms, and the consensus and probability code. </p>
+
+</body>
+
+</html>
+
