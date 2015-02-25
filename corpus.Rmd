@@ -1,0 +1,411 @@
+---
+title: "Corpus analysis: the document-term matrix"
+output: html_document
+---
+
+=========================================
+
+_(C) 2015 Wouter van Atteveldt, license: [CC-BY-SA]_
+
+The most important object in frequency-based text analysis is the *document term matrix*. 
+This matrix contains the documents in the rows and terms (words) in the columns, 
+and each cell is the frequency of that term in that document.
+
+In R, these matrices are provided by the `tm` (text mining) package. 
+Although this package provides many functions for loading and manipulating these matrices,
+using them directly is relatively complicated. 
+
+Fortunately, the `RTextTools` package provides an easy function to create a document-term matrix from a data frame. To create a term document matrix from a simple data frame with a 'text' column, use the `create_matrix` function (with removeStopwords=F to make sure all words are kept):
+
+```{r,message=F}
+library(RTextTools)
+input = data.frame(text=c("Chickens are birds", "The bird eats"))
+m = create_matrix(input$text, removeStopwords=F)
+```
+
+We can inspect the resulting matrix m using the regular R functions to get e.g. the type of object and the dimensionality:
+
+```{r}
+class(m)
+dim(m)
+m
+```
+
+So, `m` is a `DocumentTermMatrix`, which is derived from a `simple_triplet_matrix` as provided by the `slam` package. 
+Internally, document-term matrices are stored as a _sparse matrix_: 
+if we do use real data, we can easily have hundreds of thousands of rows and columns, while   the vast majority of cells will be zero (most words don't occur in most documents).
+Storing this as a regular  matrix would waste a lot of memory.
+In a sparse matrix, only the non-zero entries are stored, as 'simple triplets' of (document, term, frequency). 
+
+As seen in the output of `dim`, Our matrix has only 2 rows (documents) and 6 columns (unqiue words).
+Since this is a rather small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
+
+```{r}
+as.matrix(m)
+```
+
+Stemming and stop word removal
+-----
+
+So, we can see that each word is kept as is. 
+We can reduce the size of the matrix by dropping stop words and stemming (changing a word like 'chickens' to its base form or stem 'chicken'):
+(see the create_matrix documentation for the full range of options)
+
+```{r}
+m = create_matrix(input$text, removeStopwords=T, stemWords=T, language='english')
+dim(m)
+as.matrix(m)
+```
+
+As you can see, the stop words (_the_ and _are_) are removed, while the two verb forms of _to eat_ are joined together. 
+
+In RTextTools, the language for stemming and stop words can be given as a parameter, and the default is English.
+Note that stemming works relatively well for English, but is less useful for more highly inflected languages such as Dutch or German. 
+An easy way to see the effects of the preprocessing is by looking at the colSums of a matrix,
+which gives the total frequency of each term:
+
+```{r}
+colSums(as.matrix(m))
+```
+
+For more richly inflected languages like Dutch, the result is less promising:
+
+```{r}
+text = c("De kip eet", "De kippen hebben gegeten")
+m = create_matrix(text, removeStopwords=T, stemWords=T, language="dutch")
+colSums(as.matrix(m))
+```
+
+As you can see, _de_ and _hebben_ are correctly recognized as stop words, but _gegeten_ (eaten) and _kippen_ (chickens) have a different stem than _eet_ (eat) and _kip_ (chicken). German gets similarly bad results. 
+
+Getting a Term-Document matrix from AmCAT
+====
+
+AmCAT can automatically lemmatize text. 
+Before we can use it, we need to connect with a valid username and password:
+
+```{r, message=FALSE}
+library(amcatr)
+conn = amcat.connect("http://preview.amcat.nl")
+```
+
+Now, we can use the `amcat.gettokens` 
+
+```{r}
+sentence = "Chickens are birds. The bird eats"
+t = amcat.gettokens(conn, sentence=as.character(sentence), module="corenlp_lemmatize")
+t
+```
+
+As you can see, this provides real-time lemmatization and Part-of-Speech tagging using the Stanford CoreNLP toolkit:
+'are' is recognized as V(erb) and has lemma 'be'. 
+To create a term-document matrix from a list of tokens, we can use the `dtm.create` function. 
+Since the token list is a regular R data frame, we can use normal selection to e.g. select only the verbs and nouns:
+
+```{r, warning=FALSE, message=FALSE}
+library(corpustools)
+t = t[t$pos1 %in% c("V", "N"), ]
+dtm = dtm.create(documents=t$sentence, terms=t$lemma)
+as.matrix(dtm)
+```
+
+
+Loading and analysing a larger dataset from AmCAT
+-----
+
+Normally, rather than ask for a single ad hoc text to be parsed, we would upload a selection of articles to AmCAT,
+after which we can call the analysis for all text at once.
+This can be done from R using the `amcat.upload.articles` function, which we now demonstrate with a single article but which can also be used to upload many articles at once:
+
+```{r}
+articles = data.frame(text = "John is a great fan of chickens, and so is Mary", date="2001-01-01", headline="test")
+
+aset = amcat.upload.articles(conn, project = 1, articleset="Test Florence", medium="test", 
+                             text=articles$text, date=articles$date, headline=articles$headline)
+
+```
+
+And we can then lemmatize this article and download the results directly to R
+using `amcat.gettokens`:
+
+```{r}
+amcat.gettokens(conn, project=688, articleset = aset, module = "corenlp_lemmatize")
+```
+
+And we can see that e.g. for "is" the lemma "be" is given. 
+Note that the words are not in order, and the two occurrences of "is" are automatically summed. 
+This can be switched off by giving `drop=NULL` as extra argument.
+
+
+
+For a more serious application, we will use an existing article set: [set 17667](https://amcat.nl/navigator/projects/688/articlesets/) in project 688, which contains American newspaper coverage about the 2009 Gaza war.
+The analysed tokens for this set can be downloaded with the following command:
+
+```{r eval=FALSE}
+t = amcat.gettokens(conn, project=688, articleset = 17667, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
+save(t, file="tokens_17667.rda")
+```
+
+Note that the first time you run this command on an article set, the articles will be preprocessed on the fly, so it could take quite a long time. 
+After this, however, the results are stored in the AmCAT database so getting te tokens should go relatively quickly, although still only around 10 articles per second - so it is wise to save the tokens after getting them using R's `save` command, so they can be loaded quickly 
+```{r eval=FALSE}
+save(t, file="tokens_17667.rda")
+```
+
+```{r}
+load("tokens_17667.rda")
+nrow(t)
+head(t, n=20)
+```
+
+As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 8 million tokens rather than 6.
+We can create a document-term matrix using the same commands as above, restricting ourselves to nouns, names, verbs, and adjectives:
+
+
+```{r, warning=FALSE}
+t = t[t$pos1 %in% c("V", "N", 'M', 'A'), ]
+dtm = dtm.create(documents=t$aid, terms=t$lemma)
+dtm
+```
+
+So, we now have a "sparse" matrix of almost 7,000 documents by more than 70,000 terms. 
+Sparse here means that only the non-zero entries are kept in memory, 
+because otherwise it would have to keep all 70 million cells in memory (and this is a relatively small data set).
+Thus, it might not be a good idea to use functions like `as.matrix` or `colSums` on such a matrix,
+since these functions convert the sparse matrix into a regular matrix. 
+The next section investigates a number of useful functions to deal with (sparse) document-term matrices.
+
+Corpus analysis: word frequency
+-----
+
+What are the most frequent words in the corpus? 
+As shown above, we could use the built-in `colSums` function,
+but this requires first casting the sparse matrix to a regular matrix, 
+which we want to avoid (even our relatively small dataset would have 400 million entries!).
+However, we can use the `col_sums` function from the `slam` package, which provides the same functionality for sparse matrices:
+
+```{r}
+library(slam)
+freq = col_sums(dtm)
+# sort the list by reverse frequency using built-in order function:
+freq = freq[order(-freq)]
+head(freq, n=10)
+```
+
+As can be seen, the most frequent terms are all the main actors/countries involved and the 'stop' words be, have, etc.
+It can be useful to compute different metrics per term, such as term frequency, document frequency (how many documents does it occur), and td.idf (term frequency * inverse document frequency, which removes both rare and overly frequent terms). 
+The function `term.statistics` from the `corpus-tools` package provides this functionality:
+
+
+```{r}
+terms = term.statistics(dtm)
+terms = terms[order(-terms$termfreq), ]
+head(terms)
+```
+
+As you can see, for each word the total frequency and the relative document frequency is listed, 
+as well as some basic information on the number of characters and the occurrence of numerals or non-alphanumeric characters.
+This allows us to create a 'common sense' filter to reduce the amount of terms, for example removing all words containing a letter or punctuation mark, and all short (`characters<=2`) infrequent (`termfreq<25`) and overly frequent (`reldocfreq>.5`) words:
+
+```{r}
+subset = terms[!terms$number & !terms$nonalpha & terms$characters>2 & terms$termfreq>=25 & terms$reldocfreq<.5, ]
+nrow(subset)
+head(subset, n=10)
+```
+
+This seems more to be a relatively useful set of words. 
+We now have about 8 thousand terms left of the original 72 thousand. 
+To create a new document-term matrix with only these terms, 
+we can use normal matrix indexing on the columns (which contain the words):
+
+```{r}
+dtm_filtered = dtm[, colnames(dtm) %in% subset$term]
+dim(dtm_filtered)
+```
+
+Which yields a much more managable dtm. 
+As a bonus, we can use the `dtm.wordcloud` function in corpustools (which is a thin wrapper around the `wordcloud` package)
+to visualize the top words as a word cloud:
+
+```{r, warning=F}
+dtm.wordcloud(dtm_filtered)
+```
+
+Note that such corpus analytics might not seem very informative, but it is quite easy to use this to e.g. see which names occur in a set of documents, as we do with the following commands (filtering t on `pos1==M` for naMe):
+
+```{r, warning=FALSE}
+names = t[t$pos1 == 'M', ]
+dtm_names = dtm.create(names$aid, names$lemma)
+name.terms = term.statistics(dtm_names)
+name.terms  = name.terms [order(-name.terms$termfreq), ]
+head(name.terms )
+```
+
+And of course we can visualize this (using a square root transformation of the frequency to prevent the top names from dominating the word cloud):
+
+```{r, warning=F}
+dtm.wordcloud(dtm_names, freq.fun = sqrt)
+```
+
+Comparing corpora
+----
+
+Another useful thing we can do is comparing two corpora: 
+Which words or names are mentioned more in e.g. one country or speech compared to another.
+To do this, we get the tokens from set 17668, which contains the coverage of the Gaza war in newspapers from Islamic countries. 
+
+
+```{r eval=FALSE}
+t2 = amcat.gettokens(conn, project=688, articleset = 17668, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
+save(t2, file="tokens_17668.rda")
+```
+
+And we create a term-document matrix from the second article set as well:
+
+```{r, warning=FALSE}
+load("tokens_17668.rda")
+t2 = t2[t2$pos1 %in% c("V", "N", 'M', 'A'), ]
+dtm2 = dtm.create(documents=t2$aid, terms=t2$lemma)
+dtm2
+```
+
+Let's also remove the non-informative words from this matrix:
+
+```{r}
+terms2 = term.statistics(dtm2)
+subset2 = terms2[!terms2$number & !terms2$nonalpha & terms2$characters>2 & terms2$termfreq>=25 & terms2$reldocfreq<.5, ]
+dtm2_filtered = dtm2[, colnames(dtm2) %in% subset2$term]
+```
+
+So how can we check which words are more frequent in the American discourse than in the 'Islamic' discource?
+The function `corpora.compare` provides this functionality, given two document-term matrices:
+
+```{r}
+cmp = corpora.compare(dtm_filtered, dtm2_filtered)
+cmp = cmp[order(cmp$over), ]
+head(cmp)
+```
+
+As you can see, for each term the absolute and relative frequencies are given for both corpora. 
+In this case, `x` is American newspapers and `y` is Muslim-country newspapers. 
+The 'over' column shows the amount of overrepresentation: a high number indicates that it is relatively more frequent in the x (positive) corpus. 'Chi' is a measure of how unexpected this overrepresentation is: a high number means that it is a very typical term for that corpus.
+Since the output above is sorted by ascending overrepresentation, these terms are the overrepresented terms in the Muslim-country newspapers. Let's have a look at the American papers:
+
+```{r}
+cmp = cmp[order(-cmp$over), ]
+head(cmp, n=10)
+```
+
+So, to draw very precocious conclusions, Americans seem to talk about Palestinians and politics, 
+while the Muslim-countries talk about Hamas and fighting.
+
+Let's make a word cloud of the words in the American papers, with size indicating chi-square overrepresentation:
+
+```{r, warning=F}
+us = cmp[cmp$over > 1,]
+dtm.wordcloud(terms = us$term, freqs = us$chi)
+```
+
+And for the Muslim-country papers:
+
+```{r, warning=F}
+mus = cmp[cmp$over < 1,]
+dtm.wordcloud(terms = mus$term, freqs = mus$chi, freq.fun = sqrt)
+```
+
+As you can see, these differences are for a large part due to place names: American papers talk about American states and cities, while Muslim-country papers talk about their localities. 
+
+So, it can be more informative to exclude names, and focus instead on e.g. the used nouns or verbs:
+
+```{r, warning=F}
+nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
+nouns2 = t2[t2$pos1 == "N" & t2$lemma %in% subset2$term, ]
+cmp = corpora.compare(dtm.create(nouns$aid, nouns$lemma), dtm.create(nouns2$aid, nouns2$lemma))
+with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi))
+with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
+
+verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
+verbs2 = t2[t2$pos1 == "V" & t2$lemma %in% subset2$term, ]
+cmp = corpora.compare(dtm.create(verbs$aid, verbs$lemma), dtm.create(verbs2$aid, verbs2$lemma))
+with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
+with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=log))
+```
+
+Topic Modeling
+-------
+
+Topics can be seen as groups of words that cluster together.
+Similar to factor analysis, topic modeling reduces the dimensionality of the feature space (the term-document matrix)
+assuming that the latent factors (the topics) will correspond to meaningful latent classes (e.g. issues, frames)
+With a given dtm, a topic model can be trained using the `topmod.lda.fit` function:
+
+```{r}
+set.seed(12345)
+m = topmod.lda.fit(dtm_filtered, K = 10, alpha = .5)
+terms(m, 10)
+```
+
+The `terms` command gives the top N terms per topic, with each column forming a topic.
+Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
+For example, topic 3 seems to be about the conflict itself (echoing Tolstoy), while topic 9 describes the episodic action on the ground.
+Topic 4 and 6 seem mainly about international (Arabic and UN) politics, while topic 7 covers American politics.
+Topics 1 and 10 are seemingly 'mix-in' topics with various verbs, although it would be better to see usage in context for interpreting such less obvious topics.
+(note the use of `set.seed` to make sure that running this again will yield the same topics. 
+Since LDA topics are unordered, running it again will create (slightly) different topics, but certainly with different numbers)
+
+Of course, we can also create word clouds of each topic to visualize the top-words:
+
+```{r, warning=FALSE}
+topmod.plot.wordcloud(m, topic_nr = 9)
+```
+
+If we retrieve the meta-date (e.g. article dates, medium), we can make a more informative plot:
+
+```{r, warning=FALSE, message=FALSE}
+meta = amcat.getarticlemeta(conn, set=17667)
+meta = meta[match(m@documents, meta$id), ]
+head(meta)
+head(rownames(dtm_filtered))
+```
+As you can see, the `meta` variable contains the date and medium per article, with the `meta$id` matching the rownames of the document-term matrix. 
+Note that we put the meta data in the same ordering as the documents in m to make sure that they line up.
+
+Since this data set contains too many separate sources to plot, we create an "other" category for all but the largest sources
+
+```{r}
+top_media = head(sort(table(meta$medium), decreasing = T), n=10)
+meta$medium2 = ifelse(meta$medium %in% names(top_media), as.character(meta$medium), "(other)")
+table(meta$medium2)
+```
+Now, we can use the `topmod.plot.topic` function to create a combined graph with the word cloud and distribution over time and media:
+
+```{r, warning=FALSE}
+topmod.plot.topic(m, 9, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
+topmod.plot.topic(m, 7, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
+```
+
+This shows that the press agency strongly focuses on episodic coverage, while CNN has more political stories.
+Also, you can see that the initial coverage is dominated by the war itself, while later news is more politicised. 
+
+Since topic modeling is based on the document-term matrix, it is very important to preprocess this matrix before fitting a model.
+In this case, we used the dtm_filtered matrix created above, which is lemmatized text selected on minimum and maximum frequency.
+It can also be interesting to use e.g. only nouns:
+
+```{r, warning=F}
+set.seed(123456)
+nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
+dtm.nouns = dtm.create(nouns$aid, nouns$lemma)
+m.nouns = topmod.lda.fit(dtm.nouns, K = 10, alpha = .5)
+terms(m.nouns, 10)
+```
+
+As you can see, this gives similar topics as above, but without the proper names they are more difficult to interpret. 
+Doing the same for verbs gives a different take on things, yielding semantic classes rather than substantive topics:
+
+```{r, warning=F}
+set.seed(123456)
+verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
+dtm.verbs = dtm.create(verbs$aid, verbs$lemma)
+m.verbs = topmod.lda.fit(dtm.verbs, K = 5, alpha = .5)
+terms(m.verbs, 10)
+```
