@@ -1,0 +1,272 @@
+---
+title: "Clause analysis""
+output: html_document
+---
+
+In clause analysis, the grammatical structure of text is used to analyse 'who did what to whom (according to whom)', 
+to adapt the classical quote from Harold Lasswell. 
+From a users point of view, clause analysis is called in AmCAT similar to other analyses:
+
+```{r, message=FALSE}
+library(amcatr)
+conn = amcat.connect("http://preview.amcat.nl")
+sentence = "Mary told me that John loves her more than anything"
+t = amcat.gettokens(conn, sentence=as.character(sentence), module="clauses_en")
+t
+```
+
+As you can see in the result, this is essentially the output from the lemmatization with three extra sets of columns:
+* `source_id` and `source_role` identify (quoted or paraphrased) sources. In this case, there is one quotation (source_id 0) with Mary being the source, and 'that ... anything' the quote.
+* `clause_id` and `clause_role` perform a similar function: John is the subject of clause '0', while 'loving her more than anything' is the predicate
+* Finally, `coref` indicates coreference: words with the same coreference id refer to the same person or entity. In this case, Mary and 'her' are correctly identified as co-referring.
+
+Thus, the clause analysis breaks down the sentence into a nested structure, with the clause nested in the quotation. 
+For clauses, the subject is the semantic agent or actor doing something, while the predicate is everything else, including the verb and the direct object, if applicable. 
+
+Since this data set is "just another" R data frame containing tokens, the techniques from the first part of the workshop are directly applicable. 
+To show this, let's get the same data set containing American coverage of the Gaza war:
+
+```{r, eval=FALSE}
+t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, drop=NULL)
+t3 = amcat.tokens.unique_indices(t3)
+save(t3, file="clauses_17667b.rda")
+```
+
+```{r, include=FALSE}
+load("clauses_17667b.rda")
+```
+
+Lets have a look at the (beginning of) the second sentence of the first article:
+
+```{r}
+head(t3[t3$sentence==2,], n=25)
+```
+
+As you can see, Philip Giraldi is correctly identified as a source, and his quote contains a single clause, 
+with "the Israeli attack" as subject and "is far from ... into Israel" is the predicate.
+This illustrates some of the possibilities and limitations of the method:
+It correctly identifies the main argument in the sentence: Israel is trying to stop rockets fired into Israel, among other things and according to Philip Giraldi.
+It does not, however, see the Israeli attack on Gaza as a quote since the mechanism depends on verb structure, and that phrase does not have a verb. 
+Moreover, the problem of understanding complex or even subtle messages like it being "far from" only about stopping rockets is not closer to a solution. 
+That said, this analysis can solve the basic problem in conflict coverage that co-occurrence methods are difficult because most documents talk about both sides, requiring analysis of who does what to whom.
+
+To showcase how this output can be analysed with the same techniques as discussed above, 
+let's look at the predicates for which Israel and Palestine are subject, respectively. 
+First, we define a variable indicating whether a token is indicative of either actor using a simplistic pattern, 
+then select all clause ids that have Israel as its subject, and finally select all predicates that match that clause_id:
+(This looks and sound more complex than it is)
+
+```{r}
+t3$israel = grepl("israel.*|idf", t3$lemma, ignore.case = T)
+clauses.israel = unique(t3$clause_id[t3$israel & !is.na(t3$clause_role) & t3$clause_role == "subject"])
+predicates.israel = t3[!is.na(t3$clause_role) & t3$clause_role == "predicate" & t3$clause_id %in% clauses.israel, ]
+```
+
+Now, we can create a dtm containing only verbs in those predicates, and create a word cloud of those verbs:
+
+```{r, warning=FALSE, message=FALSE}
+library(corpustools)
+tokens = predicates.israel[predicates.israel$pos1 == 'V' & !(predicates.israel$lemma %in% c("have", "be", "do", "will")),]
+dtm.israel = dtm.create(tokens$aid, tokens$lemma)
+dtm.wordcloud(dtm.israel)
+```
+
+Let's see what Hamas does:
+
+```{r, warning=FALSE, message=FALSE}
+t3$hamas = grepl("hamas.*", t3$lemma, ignore.case = T)
+clauses.hamas = unique(t3$clause_id[t3$hamas & !is.na(t3$clause_role) & t3$clause_role == "subject"])
+predicates.hamas = t3[!is.na(t3$clause_role) & t3$clause_role == "predicate" & t3$clause_id %in% clauses.hamas, ]
+tokens = predicates.hamas[predicates.hamas$pos1 == 'V' & !(predicates.hamas$lemma %in% c("have", "be", "do", "will")),]
+dtm.hamas = dtm.create(tokens$aid, tokens$lemma)
+dtm.wordcloud(dtm.hamas)
+```
+
+So, there is some difference in verb use, Israel " continue (to) kill (and) launch", while Hamas "stop (or) continue firing (and) launching". 
+However, there is also considerable overlap, which is not very strange as both actors are engaged in active military conflict.
+Of course, we can also check now of which verbs Israel is more often the subject of compared to Hamas:
+
+```{r}
+cmp = corpora.compare(dtm.israel, dtm.hamas)
+with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi))
+```
+
+And which as Hamas' favourite verbs:
+
+```{r}
+with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi))
+```
+
+So, Hamas fires, hides, smuggles, and vows (to) rearm, while Israel defends and moes, but also bombs, pounds, and invades.
+
+Finally, let us see whether we can do a topic modeling of quotes. 
+For example, we can make a topic model of all quotes, and then see which topics are more prevalent in Israeli quotes. 
+First, we add Palestinians (palest*) as a possible source, to distinguish between Hamas (militans) and Palestinian (civilians),
+and take only sources that uniquely contain one of these actors:
+
+```{r}
+t3$palest = grepl("palest.*", t3$lemma, ignore.case = T)
+sources.israel = t3$source_id[!is.na(t3$source_id) & t3$source_role == "source" & t3$israel]
+sources.hamas = t3$source_id[!is.na(t3$source_id) & t3$source_role == "source" & t3$hamas]
+sources.palest = t3$source_id[!is.na(t3$source_id) & t3$source_role == "source" & t3$palest]
+
+# keep all sources with only one source
+sources.israel.u = setdiff(sources.israel, c(sources.hamas,sources.palest))
+sources.hamas.u = setdiff(sources.hamas, c(sources.israel,sources.palest))
+sources.palest.u = setdiff(sources.palest, c(sources.hamas,sources.israel))
+```
+
+Now, we can select those quotes that belong to any of those sources, and do a frequency analysis on the quotes to select vocabulary for modeling:
+
+```{r}
+sources = unique(c(sources.israel.u, sources.hamas.u, sources.palest.u))
+quotes = t3[!is.na(t3$source_role) & t3$source_role=="quote" & (t3$source_id %in% sources) & t3$pos1 %in% c("V", "N", "A", "M"),]
+dtm.quotes = dtm.create(quotes$source_id, quotes$lemma)
+freq = term.statistics(dtm.quotes)
+freq = freq[!freq$number & !freq$nonalpha & freq$characters > 2 & freq$termfreq > 5 & freq$reldocfreq < .15,]
+freq = freq[order(-freq$reldocfreq), ]
+head(freq)
+```
+
+Using this list to create a new dtm, we can run a topic model:
+
+```{r}
+dtm.quotes.subset = dtm.quotes[, colnames(dtm.quotes) %in% freq$term]
+set.seed(123)
+m = topmod.lda.fit(dtm.quotes.subset, K=10, alpha=.5)
+terms(m, 10)
+```
+
+So, topic 1 seems to be about civilian casualties.
+Topic 2 is about the rocket attacks (presumably on Israel) and topic 4 is about the smuggling tunnels, the ending of both of which are stated Israeli goals. 
+Another interesting topic is 10, which is about the border crossings and blockade, the end of which was a Hamas condition for peace.
+Topic 6 is about humanitarian aid, while the other topics seem mainly about the fighting and international diplomacy.
+
+To investigate which topics are used most by the identified actors, we first extract the list of topics per document (quote):
+
+```{r}
+quotes = topmod.topics.per.document(m)
+head(quotes)
+```
+
+This data frame lists the quote id and the loading of each topic on that quote.
+This is the general data that you would normally need to analyse topic use over time, per medium etc., and that we now use to analyse use per source.
+First, we convert this from a wide to a tall format using the `melt` function in package `reshape2`:
+
+```{r}
+quotes = melt(quotes, id.vars="id", variable.name="topic")
+head(quotes)
+```
+
+And add a new variable for whether the subject was Israel, Hamas, or Palestinians:
+
+
+```{r}
+quotes$subject = ifelse(quotes$id %in% sources.israel.u, "israel",
+                         ifelse(quotes$id %in% sources.palest.u, "palest", "hamas"))
+table(quotes$subject)
+```
+
+So, Israel has by far the most quotes. Note that this number is inflated because it counts each topic loading for each  quote.
+Now, if we assert that a quote is 'about' a topic if the loading is at least .5, we can calculate topic use per source using `acast`, again from `reshape2`:
+
+```{r}
+quotes = quotes[quotes$value > .5,]
+round(acast(quotes, topic ~ subject, length), digits=2)
+```
+
+So, we can see some clear patterns. Israel prefers to talk about its goals (2: stopping the rockets) but is also forced to talk about its combat actions, especially topic 7 which includes shelling schools and houses. 
+Hamas talks mostly about the blockade (10), whlie other Palestinian sources talk about the killing of civilians (1) but also about topic 7.
+
+Of course, this is only one of many possible analyses. For example,
+we could also look at predicates rather than quotes:
+what kind of actions are performed by Israel and Hamas?
+Also, it would be interesting to compare American news with news from Muslim countries, to see if the framing differs between sources.
+The good news is that all these analyses can be performed using the tools discussed in this and the previous session: 
+after running `amcat.gettokens`, you have normal R data frame which list the tokens, and this data frame can be analysed and manipulated like a normal R data frame.
+Selections of the frame can be converted to a term-document matrix, after which corpus-analytic tools like frequency analysis, topic modeling, or machine learning using e.g. RTextTools.
+
+Turning clauses into Networks
+====
+
+As a final interesting topic, let's do a simple semantic network analysis based on the clauses.
+To do this, first add actors for American and European politics:
+
+```{r}
+t3$eu = grepl("euro.*", t3$lemma, ignore.case=T)
+t3$us = grepl("america.*|congress.*|obama", t3$lemma, ignore.case=T)
+```
+
+Now, let's select only those tokens that occur in a clause and contain an actor,
+and convert (melt) that to long format, asking for the actor per clause and role:
+
+```{r}
+clauses = t3[!is.na(t3$clause_id) & (t3$israel | t3$palest | t3$hamas | t3$eu | t3$us), ]
+b = melt(clauses, id.vars=c("clause_id", "clause_role"), 
+         measure.vars=c("israel", "palest", "hamas", "eu", "us"), 
+         variable.name="actor")
+head(b)
+```
+
+This lists all clause-role-actor combinations, including those that did not occur (`value=FALSE`).
+So, we filter on `b$value` (which is equivalent to `b$value == TRUE`). 
+Also, we apply unique to make sure a clause is not counted twice if two words matched the same actor
+(e.g. clause 2, which contained two Israel words in the predicate):
+
+```{r}
+b = unique(b[b$value == TRUE, ])
+head(b)
+```
+
+Now, we can make an 'edge list' by matching the predicates and subjects on clause_id:
+
+```{r}
+predicates = b[b$clause_role == "predicate", c("clause_id", "actor")]
+subjects = b[b$clause_role == "subject", c("clause_id", "actor")]
+edges = merge(subjects, predicates, by="clause_id")
+head(edges)
+```
+
+This list gives each subject (x) and predicate (y) combination in each clause. 
+To keep it simple, lets say we only care about how often an actor 'does something' to another actor,
+so we aggregate by subject and predicate, and simply count the amount of clauses (using `length`):
+
+```{r}
+edgecounts = aggregate(list(n=edges$clause_id), by=edges[c("actor.x", "actor.y")], FUN=length)
+head(edgecounts)
+```
+
+Now, we can use the `igraph` package to plot the graph, e.g. ploting all edges occurring more than 500 times:
+
+```{r}
+library("igraph")
+g  = graph.data.frame(edgecounts[edgecounts$n > 500,], directed=T)
+plot(g)
+```
+
+So, (unsurprisingly) Israel and Hamas act on each other and both act on Palestinians, while the US acts only on Israel. Europe does not occur (probably because of the naive search string).
+
+Let's now have a look at the verbs in the US 'actions' towards Israel. 
+
+```{r}
+us.il.clauses = edges$clause_id[edges$actor.x == "us" & edges$actor.y == "israel"]
+us.il.verbs = t3[!is.na(t3$clause_id) & t3$clause_id %in% us.il.clauses & t3$pos1 == "V" & !(t3$lemma %in% c("have", "be", "do", "will")), ]
+us.il.verbs.dtm = dtm.create(us.il.verbs$aid, us.il.verbs$lemma)
+dtm.wordcloud(us.il.verbs.dtm)
+```
+
+So, even though the EU did not act on Israel a lot, lets look at what they did do:
+
+```{r, warning=FALSE}
+eu.il.clauses = edges$clause_id[edges$actor.x == "eu" & edges$actor.y == "israel"]
+eu.il.verbs = t3[!is.na(t3$clause_id) & t3$clause_id %in% eu.il.clauses & t3$pos1 == "V" & !(t3$lemma %in% c("have", "be", "do", "will")), ]
+eu.il.verbs.dtm = dtm.create(eu.il.verbs$aid, eu.il.verbs$lemma)
+dtm.wordcloud(eu.il.verbs.dtm, nterms=50, freq.fun=sqrt)
+```
+
+So, the US defends, supports, and stands (by) Israel, while the EU calls, meets, pleads, urges and condemns them.
+
+Obviously, even though this is quite interesting already, this is the start of a proper semantic network analysis rather than the end.
+an obvious extension would be to systematically analyse different possible actions, e.g. using topic models or some sort of event dictionary. 
+Of course, it would also be interesting to compare the semantic network from different countries or according to different sources, etc.
+The good news is, all these analyses are really just combinations of the various techniques described in this and the previous session. 
