@@ -38,7 +38,7 @@ Storing this as a regular  matrix would waste a lot of memory.
 In a sparse matrix, only the non-zero entries are stored, as 'simple triplets' of (document, term, frequency). 
 
 As seen in the output of `dim`, Our matrix has only 2 rows (documents) and 6 columns (unqiue words).
-Since this is a rather small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
+Since this is a fairly small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
 
 ```{r}
 as.matrix(m)
