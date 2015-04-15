@@ -51,28 +51,28 @@ terms(m, 10)
 ```
 
 ```
-##       Topic 1     Topic 2      Topic 3   Topic 4      Topic 5   
-##  [1,] "Iraq"      "country"    "world"   "energy"     "job"     
-##  [2,] "terrorist" "government" "America" "way"        "new"     
-##  [3,] "security"  "law"        "United"  "new"        "economy" 
-##  [4,] "man"       "work"       "States"  "power"      "business"
-##  [5,] "woman"     "America"    "weapon"  "Security"   "american"
-##  [6,] "war"       "day"        "nuclear" "system"     "worker"  
-##  [7,] "country"   "other"      "threat"  "technology" "today"   
-##  [8,] "force"     "many"       "own"     "Social"     "company" 
-##  [9,] "leader"    "effort"     "regime"  "future"     "more"    
-## [10,] "enemy"     "right"      "action"  "clean"      "market"  
-##       Topic 6    Topic 7          Topic 8     Topic 9   Topic 10   
-##  [1,] "year"     "time"           "tax"       "people"  "child"    
-##  [2,] "more"     "Congress"       "Americans" "America" "school"   
-##  [3,] "last"     "people"         "health"    "nation"  "education"
-##  [4,] "next"     "responsibility" "family"    "freedom" "college"  
-##  [5,] "budget"   "first"          "care"      "great"   "life"     
-##  [6,] "american" "same"           "reform"    "terror"  "good"     
-##  [7,] "deficit"  "problem"        "plan"      "peace"   "student"  
-##  [8,] "program"  "day"            "cost"      "free"    "better"   
-##  [9,] "spending" "party"          "money"     "citizen" "high"     
-## [10,] "decade"   "month"          "insurance" "hope"    "sure"
+##       Topic 1      Topic 2    Topic 3   Topic 4    Topic 5      Topic 6  
+##  [1,] "way"        "new"      "America" "year"     "America"    "country"
+##  [2,] "today"      "job"      "world"   "tax"      "energy"     "life"   
+##  [3,] "money"      "more"     "nation"  "family"   "home"       "day"    
+##  [4,] "Security"   "business" "people"  "last"     "goal"       "man"    
+##  [5,] "worker"     "american" "freedom" "next"     "economy"    "law"    
+##  [6,] "Social"     "tonight"  "great"   "budget"   "power"      "woman"  
+##  [7,] "Federal"    "company"  "free"    "deficit"  "technology" "citizen"
+##  [8,] "government" "market"   "terror"  "more"     "clean"      "work"   
+##  [9,] "other"      "first"    "peace"   "bill"     "oil"        "part"   
+## [10,] "system"     "place"    "own"     "spending" "commitment" "Tonight"
+##       Topic 7     Topic 8     Topic 9          Topic 10   
+##  [1,] "Americans" "child"     "people"         "terrorist"
+##  [2,] "Congress"  "school"    "american"       "Iraq"     
+##  [3,] "health"    "good"      "time"           "States"   
+##  [4,] "care"      "education" "America"        "United"   
+##  [5,] "reform"    "program"   "future"         "weapon"   
+##  [6,] "plan"      "many"      "responsibility" "war"      
+##  [7,] "cost"      "college"   "economy"        "security" 
+##  [8,] "insurance" "student"   "same"           "force"    
+##  [9,] "best"      "better"    "generation"     "enemy"    
+## [10,] "Medicare"  "community" "action"         "nuclear"
 ```
 
 

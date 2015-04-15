@@ -27,7 +27,7 @@ Since this data set is "just another" R data frame containing tokens, the techni
 To show this, let's get the same data set containing American coverage of the Gaza war:
 
 ```{r, eval=FALSE}
-t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, drop=NULL)
+t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, )
 save(t3, file="clauses_17667b.rda")
 ```
 
@@ -132,7 +132,7 @@ Using this list to create a new dtm, we can run a topic model:
 ```{r}
 dtm.quotes.subset = dtm.quotes[, colnames(dtm.quotes) %in% freq$term]
 set.seed(123)
-m = topmod.lda.fit(dtm.quotes.subset, K=10, alpha=.5)
+m = lda.fit(dtm.quotes.subset, K=10, alpha=.5)
 terms(m, 10)
 ```
 
@@ -144,7 +144,7 @@ Topic 6 is about humanitarian aid, while the other topics seem mainly about the 
 To investigate which topics are used most by the identified actors, we first extract the list of topics per document (quote):
 
 ```{r}
-quotes = topmod.topics.per.document(m)
+quotes = topics.per.document(m)
 head(quotes)
 ```
 
