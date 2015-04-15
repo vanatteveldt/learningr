@@ -62,7 +62,7 @@ Storing this as a regular  matrix would waste a lot of memory.
 In a sparse matrix, only the non-zero entries are stored, as 'simple triplets' of (document, term, frequency). 
 
 As seen in the output of `dim`, Our matrix has only 2 rows (documents) and 6 columns (unqiue words).
-Since this is a rather small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
+Since this is a fairly small matrix, we can visualize it using `as.matrix`, which converts the 'sparse' matrix into a regular matrix:
 
 
 ```r
@@ -184,16 +184,15 @@ Since the token list is a regular R data frame, we can use normal selection to e
 
 ```r
 library(corpustools)
-t = t[t$pos1 %in% c("V", "N"), ]
-dtm = dtm.create(documents=t$sentence, terms=t$lemma)
+dtm = dtm.create(documents=t$sentence, terms=t$lemma, filter=t$pos1 %in% c('V', 'N'), minfreq=0)
 as.matrix(dtm)
 ```
 
 ```
 ##     Terms
-## Docs chicken be bird eat
-##    1       1  1    1   0
-##    2       0  0    1   1
+## Docs chicken bird eat
+##    1       1    1   0
+##    2       0    1   1
 ```
 
 
@@ -213,8 +212,8 @@ aset = amcat.upload.articles(conn, project = 1, articleset="Test Florence", medi
 ```
 
 ```
-## Created articleset 17700: Test Florence in project 1
-## Uploading 1 articles to set 17700
+## Created articleset 18317: Test Florence in project 1
+## Uploading 1 articles to set 18317
 ```
 
 And we can then lemmatize this article and download the results directly to R
@@ -222,27 +221,28 @@ using `amcat.gettokens`:
 
 
 ```r
-amcat.gettokens(conn, project=688, articleset = aset, module = "corenlp_lemmatize")
+amcat.gettokens(conn, project=1, articleset = aset, module = "corenlp_lemmatize")
 ```
 
 ```
-## GET http://preview.amcat.nl/api/v4/projects/688/articlesets/17700/tokens/?page=1&module=corenlp_lemmatize&page_size=1&format=csv
-## GET http://preview.amcat.nl/api/v4/projects/688/articlesets/17700/tokens/?page=2&module=corenlp_lemmatize&page_size=1&format=csv
+## GET http://preview.amcat.nl/api/v4/projects/1/articlesets/18317/tokens/?page=1&module=corenlp_lemmatize&page_size=1&format=csv
+## GET http://preview.amcat.nl/api/v4/projects/1/articlesets/18317/tokens/?page=2&module=corenlp_lemmatize&page_size=1&format=csv
 ```
 
 ```
-##        word pos   lemma       aid pos1 freq
-## 1         ,   ,       , 114440106    .    1
-## 2         a  DT       a 114440106    D    1
-## 3       and  CC     and 114440106    C    1
-## 4  chickens NNS chicken 114440106    N    1
-## 5       fan  NN     fan 114440106    N    1
-## 6     great  JJ   great 114440106    A    1
-## 7        is VBZ      be 114440106    V    2
-## 8      John NNP    John 114440106    M    1
-## 9      Mary NNP    Mary 114440106    M    1
-## 10       of  IN      of 114440106    P    1
-## 11       so  RB      so 114440106    B    1
+##        word sentence pos   lemma offset       aid id pos1
+## 1      John        1 NNP    John      0 114440106  1    M
+## 2        is        1 VBZ      be      5 114440106  2    V
+## 3         a        1  DT       a      8 114440106  3    D
+## 4     great        1  JJ   great     10 114440106  4    A
+## 5       fan        1  NN     fan     16 114440106  5    N
+## 6        of        1  IN      of     20 114440106  6    P
+## 7  chickens        1 NNS chicken     23 114440106  7    N
+## 8         ,        1   ,       ,     31 114440106  8    .
+## 9       and        1  CC     and     33 114440106  9    C
+## 10       so        1  RB      so     37 114440106 10    B
+## 11       is        1 VBZ      be     40 114440106 11    V
+## 12     Mary        1 NNP    Mary     43 114440106 12    M
 ```
 
 And we can see that e.g. for "is" the lemma "be" is given. 
@@ -251,83 +251,70 @@ This can be switched off by giving `drop=NULL` as extra argument.
 
 
 
-For a more serious application, we will use an existing article set: [set 17667](https://amcat.nl/navigator/projects/688/articlesets/) in project 688, which contains American newspaper coverage about the 2009 Gaza war.
+For a more serious application, we will use an existing article set: [set 16017](https://amcat.nl/navigator/projects/559/articlesets/16017/) in project 559, which contains the state of the Union speeches by Bush and Obama (each document is a single paragraph)
 The analysed tokens for this set can be downloaded with the following command:
 
 
 ```r
-t = amcat.gettokens(conn, project=688, articleset = 17667, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
-save(t, file="tokens_17667.rda")
+sotu.tokens = amcat.gettokens(conn, project=559, articleset = 16017, module = "corenlp_lemmatize", page_size = 100)
 ```
 
-Note that the first time you run this command on an article set, the articles will be preprocessed on the fly, so it could take quite a long time. 
-After this, however, the results are stored in the AmCAT database so getting te tokens should go relatively quickly, although still only around 10 articles per second - so it is wise to save the tokens after getting them using R's `save` command, so they can be loaded quickly 
-
-```r
-save(t, file="tokens_17667.rda")
-```
+This data is also available directly from the semnet package:
 
 
 ```r
-load("tokens_17667.rda")
-nrow(t)
+data(sotu)
+nrow(sotu.tokens)
 ```
 
 ```
-## [1] 7669594
+## [1] 91473
 ```
 
 ```r
-head(t, n=20)
+head(sotu.tokens, n=20)
 ```
 
 ```
-##         word sentence   pos     lemma offset      aid id pos1 freq
-## 1       Dec.        1   NNP      Dec.      0 26074649  1    M    1
-## 2         29        1    CD        29      5 26074649  2    Q    1
-## 3          ,        1     ,         ,      7 26074649  3    .    1
-## 4       2008        1    CD      2008      9 26074649  4    Q    1
-## 5      -LRB-        1 -LRB-     -lrb-     14 26074649  5    .    1
-## 6        The        1    DT       the     15 26074649  6    D    1
-## 7    Western        1    JJ   western     19 26074649  7    A    1
-## 8  Confucian        1    JJ confucian     27 26074649  8    A    1
-## 9  delivered        1   VBN   deliver     37 26074649  9    V    1
-## 10        by        1    IN        by     47 26074649 10    P    1
-## 11   Newstex        1   NNP   Newstex     50 26074649 11    M    1
-## 12     -RRB-        1 -RRB-     -rrb-     57 26074649 12    .    1
-## 13        --        1     :        --     59 26074649 13    .    1
-## 14        ``        1    ``        ``     62 26074649 14    .    1
-## 15         I        1   PRP         I     63 26074649 15    O    1
-## 16      dont        1   VBP      dont     65 26074649 16    V    1
-## 17     think        1    VB     think     70 26074649 17    V    1
-## 18     there        1    EX     there     76 26074649 18    ?    1
-## 19        is        1   VBZ        be     82 26074649 19    V    1
-## 20      such        1    JJ      such     85 26074649 20    A    1
+##          word sentence  pos      lemma offset       aid id pos1 freq
+## 1          It        1  PRP         it      0 111541965  1    O    1
+## 2          is        1  VBZ         be      3 111541965  2    V    1
+## 3         our        1 PRP$         we      6 111541965  3    O    1
+## 4  unfinished        1   JJ unfinished     10 111541965  4    A    1
+## 5        task        1   NN       task     21 111541965  5    N    1
+## 6          to        1   TO         to     26 111541965  6    ?    1
+## 7     restore        1   VB    restore     29 111541965  7    V    1
+## 8         the        1   DT        the     37 111541965  8    D    1
+## 9       basic        1   JJ      basic     41 111541965  9    A    1
+## 10    bargain        1   NN    bargain     47 111541965 10    N    1
+## 11       that        1  WDT       that     55 111541965 11    D    1
+## 12      built        1  VBD      build     60 111541965 12    V    1
+## 13       this        1   DT       this     66 111541965 13    D    1
+## 14    country        1   NN    country     71 111541965 14    N    1
+## 15          :        1    :          :     78 111541965 15    .    1
+## 16        the        1   DT        the     80 111541965 16    D    1
+## 17       idea        1   NN       idea     84 111541965 17    N    1
+## 18       that        1   IN       that     89 111541965 18    P    1
+## 19         if        1   IN         if     94 111541965 19    P    1
+## 20        you        1  PRP        you     97 111541965 20    O    1
 ```
 
-As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 8 million tokens rather than 6.
+As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 100 thousand tokens rather than 6.
 We can create a document-term matrix using the same commands as above, restricting ourselves to nouns, names, verbs, and adjectives:
 
 
 
 ```r
-t = t[t$pos1 %in% c("V", "N", 'M', 'A'), ]
+t = sotu.tokens[sotu.tokens$pos1 %in% c("N", 'M', 'A'), ]
 dtm = dtm.create(documents=t$aid, terms=t$lemma)
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
 dtm
 ```
 
 ```
-## <<DocumentTermMatrix (documents: 6893, terms: 72364)>>
-## Non-/sparse entries: 1840938/496964114
-## Sparsity           : 100%
-## Maximal term length: 80
+## <<DocumentTermMatrix (documents: 1090, terms: 1038)>>
+## Non-/sparse entries: 20113/1111307
+## Sparsity           : 98%
+## Maximal term length: 14
 ## Weighting          : term frequency (tf)
 ```
 
@@ -357,13 +344,13 @@ head(freq, n=10)
 ```
 
 ```
-##      be    have     say    Gaza  Israel      do   Hamas      go    will 
-##  274308   84449   48738   39912   39665   38138   28976   25433   24795 
-## israeli 
-##   21720
+##  America     year   people      new      job     more american  country 
+##      409      385      327      259      256      255      239      228 
+##    world      tax 
+##      198      181
 ```
 
-As can be seen, the most frequent terms are all the main actors/countries involved and the 'stop' words be, have, etc.
+As can be seen, the most frequent terms are America and recurring issues like jobs and taxes.
 It can be useful to compute different metrics per term, such as term frequency, document frequency (how many documents does it occur), and td.idf (term frequency * inverse document frequency, which removes both rare and overly frequent terms). 
 The function `term.statistics` from the `corpus-tools` package provides this functionality:
 
@@ -372,24 +359,32 @@ The function `term.statistics` from the `corpus-tools` package provides this fun
 ```r
 terms = term.statistics(dtm)
 terms = terms[order(-terms$termfreq), ]
-head(terms)
+head(terms, 10)
 ```
 
 ```
-##          term characters number nonalpha termfreq docfreq reldocfreq
-## be         be          2  FALSE    FALSE   274308    6821     0.9896
-## have     have          4  FALSE    FALSE    84449    6447     0.9353
-## say       say          3  FALSE    FALSE    48738    5487     0.7960
-## Gaza     Gaza          4  FALSE    FALSE    39912    6681     0.9692
-## Israel Israel          6  FALSE    FALSE    39665    5763     0.8361
-## do         do          2  FALSE    FALSE    38138    4697     0.6814
-##            tfidf
-## be     0.0008801
-## have   0.0020563
-## say    0.0058860
-## Gaza   0.0007637
-## Israel 0.0050127
-## do     0.0051696
+##              term characters number nonalpha termfreq docfreq reldocfreq
+## America   America          7  FALSE    FALSE      409     346    0.31743
+## year         year          4  FALSE    FALSE      385     286    0.26239
+## people     people          6  FALSE    FALSE      327     277    0.25413
+## new           new          3  FALSE    FALSE      259     206    0.18899
+## job           job          3  FALSE    FALSE      256     190    0.17431
+## more         more          4  FALSE    FALSE      255     198    0.18165
+## american american          8  FALSE    FALSE      239     210    0.19266
+## country   country          7  FALSE    FALSE      228     202    0.18532
+## world       world          5  FALSE    FALSE      198     156    0.14312
+## tax           tax          3  FALSE    FALSE      181     102    0.09358
+##           tfidf
+## America  0.1042
+## year     0.1181
+## people   0.1233
+## new      0.1314
+## job      0.1692
+## more     0.1331
+## american 0.1444
+## country  0.1329
+## world    0.1712
+## tax      0.2604
 ```
 
 As you can see, for each word the total frequency and the relative document frequency is listed, 
@@ -398,12 +393,12 @@ This allows us to create a 'common sense' filter to reduce the amount of terms, 
 
 
 ```r
-subset = terms[!terms$number & !terms$nonalpha & terms$characters>2 & terms$termfreq>=25 & terms$reldocfreq<.5, ]
+subset = terms[!terms$number & !terms$nonalpha & terms$characters>2 & terms$termfreq>=25 & terms$reldocfreq<.25, ]
 nrow(subset)
 ```
 
 ```
-## [1] 8423
+## [1] 239
 ```
 
 ```r
@@ -411,28 +406,28 @@ head(subset, n=10)
 ```
 
 ```
-##        term characters number nonalpha termfreq docfreq reldocfreq
-## get     get          3  FALSE    FALSE    17387    2744     0.3981
-## know   know          4  FALSE    FALSE    14913    2300     0.3337
-## Obama Obama          5  FALSE    FALSE    13759    2010     0.2916
-## think think          5  FALSE    FALSE    13074    2006     0.2910
-## see     see          3  FALSE    FALSE    12640    3212     0.4660
-## make   make          4  FALSE    FALSE    11491    3441     0.4992
-## year   year          4  FALSE    FALSE    11292    3123     0.4531
-## time   time          4  FALSE    FALSE    10485    3349     0.4859
-## come   come          4  FALSE    FALSE    10376    2988     0.4335
-## end     end          3  FALSE    FALSE     9549    3266     0.4738
-##          tfidf
-## get   0.007402
-## know  0.008089
-## Obama 0.017005
-## think 0.009221
-## see   0.005433
-## make  0.004985
-## year  0.005910
-## time  0.004964
-## come  0.005349
-## end   0.005763
+##                term characters number nonalpha termfreq docfreq reldocfreq
+## new             new          3  FALSE    FALSE      259     206    0.18899
+## job             job          3  FALSE    FALSE      256     190    0.17431
+## more           more          4  FALSE    FALSE      255     198    0.18165
+## american   american          8  FALSE    FALSE      239     210    0.19266
+## country     country          7  FALSE    FALSE      228     202    0.18532
+## world         world          5  FALSE    FALSE      198     156    0.14312
+## tax             tax          3  FALSE    FALSE      181     102    0.09358
+## Americans Americans          9  FALSE    FALSE      179     158    0.14495
+## nation       nation          6  FALSE    FALSE      171     150    0.13761
+## Congress   Congress          8  FALSE    FALSE      168     149    0.13670
+##            tfidf
+## new       0.1314
+## job       0.1692
+## more      0.1331
+## american  0.1444
+## country   0.1329
+## world     0.1712
+## tax       0.2604
+## Americans 0.1609
+## nation    0.1578
+## Congress  0.1523
 ```
 
 This seems more to be a relatively useful set of words. 
@@ -442,12 +437,12 @@ we can use normal matrix indexing on the columns (which contain the words):
 
 
 ```r
-dtm_filtered = dtm[, colnames(dtm) %in% subset$term]
+dtm_filtered = dtm.filter(dtm, terms=subset$term)
 dim(dtm_filtered)
 ```
 
 ```
-## [1] 6893 8423
+## [1] 1086  239
 ```
 
 Which yields a much more managable dtm. 
@@ -459,431 +454,103 @@ to visualize the top words as a word cloud:
 dtm.wordcloud(dtm_filtered)
 ```
 
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
-
-Note that such corpus analytics might not seem very informative, but it is quite easy to use this to e.g. see which names occur in a set of documents, as we do with the following commands (filtering t on `pos1==M` for naMe):
-
-
-```r
-names = t[t$pos1 == 'M', ]
-dtm_names = dtm.create(names$aid, names$lemma)
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
-name.terms = term.statistics(dtm_names)
-name.terms  = name.terms [order(-name.terms$termfreq), ]
-head(name.terms )
-```
-
-```
-##                      term characters number nonalpha termfreq docfreq
-## Gaza                 Gaza          4  FALSE    FALSE    39912    6681
-## Israel             Israel          6  FALSE    FALSE    39665    5763
-## Hamas               Hamas          5  FALSE    FALSE    28976    4845
-## Obama               Obama          5  FALSE    FALSE    13759    2010
-## Palestinians Palestinians         12  FALSE    FALSE     7277    3327
-## United             United          6  FALSE    FALSE     6923    2813
-##              reldocfreq    tfidf
-## Gaza             0.9698 0.003518
-## Israel           0.8366 0.023505
-## Hamas            0.7033 0.038803
-## Obama            0.2918 0.080890
-## Palestinians     0.4829 0.029633
-## United           0.4083 0.032329
-```
-
-And of course we can visualize this (using a square root transformation of the frequency to prevent the top names from dominating the word cloud):
-
-
-```r
-dtm.wordcloud(dtm_names, freq.fun = sqrt)
-```
-
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
 
 Comparing corpora
 ----
 
 Another useful thing we can do is comparing two corpora: 
-Which words or names are mentioned more in e.g. one country or speech compared to another.
-To do this, we get the tokens from set 17668, which contains the coverage of the Gaza war in newspapers from Islamic countries. 
+Which words or names are mentioned more in e.g. Bush' speeches than Obama's.
+
+To do this, we split the dtm in separate dtm's for Bush and Obama.
+For this, we select docment ids using the `headline` column in the metadata from `sotu.meta`, and then use the `dtm.filter` function:
 
 
 
 ```r
-t2 = amcat.gettokens(conn, project=688, articleset = 17668, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
-save(t2, file="tokens_17668.rda")
-```
-
-And we create a term-document matrix from the second article set as well:
-
-
-```r
-load("tokens_17668.rda")
-t2 = t2[t2$pos1 %in% c("V", "N", 'M', 'A'), ]
-dtm2 = dtm.create(documents=t2$aid, terms=t2$lemma)
+head(sotu.meta)
 ```
 
 ```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
+##          id   medium     headline       date
+## 1 111541965 Speeches Barack Obama 2013-02-12
+## 2 111541995 Speeches Barack Obama 2013-02-12
+## 3 111542001 Speeches Barack Obama 2013-02-12
+## 4 111542006 Speeches Barack Obama 2013-02-12
+## 5 111542013 Speeches Barack Obama 2013-02-12
+## 6 111542018 Speeches Barack Obama 2013-02-12
 ```
 
 ```r
-dtm2
+obama.docs = sotu.meta$id[sotu.meta$headline == "Barack Obama"]
+dtm.obama = dtm.filter(dtm, documents=obama.docs)
+bush.docs = sotu.meta$id[sotu.meta$headline == "George W. Bush"]
+dtm.bush = dtm.filter(dtm, documents=bush.docs)
 ```
 
-```
-## <<DocumentTermMatrix (documents: 846, terms: 15782)>>
-## Non-/sparse entries: 141939/13209633
-## Sparsity           : 99%
-## Maximal term length: 79
-## Weighting          : term frequency (tf)
-```
-
-Let's also remove the non-informative words from this matrix:
-
-
-```r
-terms2 = term.statistics(dtm2)
-subset2 = terms2[!terms2$number & !terms2$nonalpha & terms2$characters>2 & terms2$termfreq>=25 & terms2$reldocfreq<.5, ]
-dtm2_filtered = dtm2[, colnames(dtm2) %in% subset2$term]
-```
-
-So how can we check which words are more frequent in the American discourse than in the 'Islamic' discource?
+So how can we check which words are more frequent in Bush' speeches than in Obama's speeches?
 The function `corpora.compare` provides this functionality, given two document-term matrices:
 
 
 ```r
-cmp = corpora.compare(dtm_filtered, dtm2_filtered)
+cmp = corpora.compare(dtm.obama, dtm.bush)
 cmp = cmp[order(cmp$over), ]
 head(cmp)
 ```
 
 ```
-##        term termfreq.x termfreq.y relfreq.x relfreq.y    over   chi
-## 8439  Hamas          0       1457         0  0.011079 0.08279 29793
-## 8431    can          0        789         0  0.005999 0.14287 16130
-## 8430   call          0        782         0  0.005946 0.14396 15986
-## 8426 attack          0        687         0  0.005224 0.16067 14044
-## 8480   take          0        661         0  0.005026 0.16594 13512
-## 8466  other          0        643         0  0.004889 0.16980 13144
+##          term termfreq.x termfreq.y relfreq.x relfreq.y   over   chi
+## 939    terror          1         55 8.932e-05  0.004611 0.1942 48.87
+## 941 terrorist         13        103 1.161e-03  0.008634 0.2243 64.63
+## 389   freedom          8         79 7.145e-04  0.006623 0.2249 53.79
+## 507     iraqi          3         49 2.680e-04  0.004108 0.2482 37.95
+## 311     enemy          4         52 3.573e-04  0.004359 0.2533 38.29
+## 506      Iraq         15         94 1.340e-03  0.007880 0.2635 52.66
 ```
 
-As you can see, for each term the absolute and relative frequencies are given for both corpora. 
-In this case, `x` is American newspapers and `y` is Muslim-country newspapers. 
-The 'over' column shows the amount of overrepresentation: a high number indicates that it is relatively more frequent in the x (positive) corpus. 'Chi' is a measure of how unexpected this overrepresentation is: a high number means that it is a very typical term for that corpus.
-Since the output above is sorted by ascending overrepresentation, these terms are the overrepresented terms in the Muslim-country newspapers. Let's have a look at the American papers:
+For each term, this data frame contains the frequency in the 'x' and 'y' corpora (here, Obama and Bush).
+Also, it gives the relative frequency in these corpora (normalizing for total corpus size)
+and the overrepresentation in the 'x' corpus and the chi-squared value for that overrepresentation.
+So, Bush used the word terrorist 105 times, while Obama used it only 13 times, and in relative terms Bush used it about four times as often, which is highly significant. 
+
+Which words did Obama use most compared to Bush?
 
 
 ```r
-cmp = cmp[order(-cmp$over), ]
-head(cmp, n=10)
+cmp = cmp[order(cmp$over, decreasing=T), ]
+head(cmp)
 ```
 
 ```
-##              term termfreq.x termfreq.y relfreq.x relfreq.y  over   chi
-## 5431 Palestinians       7277          0  0.002707  0.000000 3.707 357.0
-## 7614        think      13074        140  0.004864  0.001065 2.840 388.0
-## 1391          CNN       4858          0  0.001807  0.000000 2.807 238.1
-## 4221         know      14913        184  0.005548  0.001399 2.730 405.3
-## 8064        video       3908          0  0.001454  0.000000 2.454 191.5
-## 6749       Senate       3808          0  0.001417  0.000000 2.417 186.6
-## 3130          get      17387        294  0.006469  0.002236 2.308 360.6
-## 1373         clip       3139          0  0.001168  0.000000 2.168 153.8
-## 4504          lot       5234         48  0.001947  0.000365 2.159 167.9
-## 7597        thank       2914          0  0.001084  0.000000 2.084 142.7
+##          term termfreq.x termfreq.y relfreq.x relfreq.y  over   chi
+## 175   company         54          6  0.004823 5.030e-04 3.874 41.65
+## 522       kid         31          0  0.002769 0.000e+00 3.769 33.07
+## 72       bank         29          0  0.002590 0.000e+00 3.590 30.94
+## 484  industry         32          1  0.002858 8.383e-05 3.560 31.20
+## 368 financial         33          2  0.002947 1.677e-04 3.381 29.53
+## 166   college         55          9  0.004912 7.545e-04 3.370 36.18
 ```
 
-So, to draw very precocious conclusions, Americans seem to talk about Palestinians and politics, 
-while the Muslim-countries talk about Hamas and fighting.
+So, while Bush talks about freedom, war, and terror, Obama talks more about industry, banks and education. 
 
-Let's make a word cloud of the words in the American papers, with size indicating chi-square overrepresentation:
+Let's make a word cloud of Obama' words, with size indicating chi-square overrepresentation:
 
 
 ```r
-us = cmp[cmp$over > 1,]
-dtm.wordcloud(terms = us$term, freqs = us$chi)
+obama = cmp[cmp$over > 1,]
+dtm.wordcloud(terms = obama$term, freqs = obama$chi)
 ```
 
-![plot of chunk unnamed-chunk-28](figure/unnamed-chunk-28.png) 
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
 
-And for the Muslim-country papers:
+And Bush:
 
 
 ```r
-mus = cmp[cmp$over < 1,]
-dtm.wordcloud(terms = mus$term, freqs = mus$chi, freq.fun = sqrt)
+bush = cmp[cmp$over < 1,]
+dtm.wordcloud(terms = bush$term, freqs = bush$chi)
 ```
 
-![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29.png) 
+![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
 
-As you can see, these differences are for a large part due to place names: American papers talk about American states and cities, while Muslim-country papers talk about their localities. 
-
-So, it can be more informative to exclude names, and focus instead on e.g. the used nouns or verbs:
-
-
-```r
-nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
-nouns2 = t2[t2$pos1 == "N" & t2$lemma %in% subset2$term, ]
-cmp = corpora.compare(dtm.create(nouns$aid, nouns$lemma), dtm.create(nouns2$aid, nouns2$lemma))
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
-with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi))
-```
-
-![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-301.png) 
-
-```r
-with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
-```
-
-![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-302.png) 
-
-```r
-verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
-verbs2 = t2[t2$pos1 == "V" & t2$lemma %in% subset2$term, ]
-cmp = corpora.compare(dtm.create(verbs$aid, verbs$lemma), dtm.create(verbs2$aid, verbs2$lemma))
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
-with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
-```
-
-![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-303.png) 
-
-```r
-with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=log))
-```
-
-![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-304.png) 
-
-Topic Modeling
--------
-
-Topics can be seen as groups of words that cluster together.
-Similar to factor analysis, topic modeling reduces the dimensionality of the feature space (the term-document matrix)
-assuming that the latent factors (the topics) will correspond to meaningful latent classes (e.g. issues, frames)
-With a given dtm, a topic model can be trained using the `topmod.lda.fit` function:
-
-
-```r
-set.seed(12345)
-m = topmod.lda.fit(dtm_filtered, K = 10, alpha = .5)
-terms(m, 10)
-```
-
-```
-##       Topic 1  Topic 2   Topic 3        Topic 4     Topic 5  
-##  [1,] "think"  "percent" "war"          "Egypt"     "protest"
-##  [2,] "get"    "price"   "peace"        "official"  "police" 
-##  [3,] "know"   "year"    "Palestinians" "end"       "group"  
-##  [4,] "want"   "market"  "world"        "Minister"  "child"  
-##  [5,] "make"   "oil"     "Israelis"     "border"    "year"   
-##  [6,] "thing"  "gas"     "state"        "leader"    "New"    
-##  [7,] "Senate" "company" "year"         "President" "student"
-##  [8,] "talk"   "fall"    "terrorist"    "Arab"      "city"   
-##  [9,] "see"    "money"   "should"       "stop"      "hold"   
-## [10,] "look"   "GLICK"   "civilian"     "offensive" "rally"  
-##       Topic 6         Topic 7          Topic 8        Topic 9    Topic 10
-##  [1,] "Council"       "Obama"          "civilian"     "kill"     "get"   
-##  [2,] "support"       "Bush"           "humanitarian" "fire"     "know"  
-##  [3,] "resolution"    "president"      "food"         "military" "see"   
-##  [4,] "situation"     "President"      "child"        "militant" "CNN"   
-##  [5,] "United"        "administration" "aid"          "ground"   "come"  
-##  [6,] "follow"        "Barack"         "medical"      "civilian" "look"  
-##  [7,] "send"          "Clinton"        "supplies"     "official" "think" 
-##  [8,] "international" "new"            "Nations"      "force"    "want"  
-##  [9,] "ceasefire"     "House"          "school"       "soldier"  "video" 
-## [10,] "Group"         "Washington"     "United"       "strike"   "lot"
-```
-
-The `terms` command gives the top N terms per topic, with each column forming a topic.
-Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
-For example, topic 3 seems to be about the conflict itself (echoing Tolstoy), while topic 9 describes the episodic action on the ground.
-Topic 4 and 6 seem mainly about international (Arabic and UN) politics, while topic 7 covers American politics.
-Topics 1 and 10 are seemingly 'mix-in' topics with various verbs, although it would be better to see usage in context for interpreting such less obvious topics.
-(note the use of `set.seed` to make sure that running this again will yield the same topics. 
-Since LDA topics are unordered, running it again will create (slightly) different topics, but certainly with different numbers)
-
-Of course, we can also create word clouds of each topic to visualize the top-words:
-
-
-```r
-topmod.plot.wordcloud(m, topic_nr = 9)
-```
-
-![plot of chunk unnamed-chunk-32](figure/unnamed-chunk-32.png) 
-
-If we retrieve the meta-date (e.g. article dates, medium), we can make a more informative plot:
-
-
-```r
-meta = amcat.getarticlemeta(conn, set=17667)
-meta = meta[match(m@documents, meta$id), ]
-head(meta)
-```
-
-```
-##            id       date                    medium length
-## 13   26074690 2009-01-01               Treppenwitz    513
-## 1485 26079516 2008-12-30 Palm Beach Post (Florida)    529
-## 1800 26080505 2009-01-06 Palm Beach Post (Florida)    387
-## 3275 26084977 2009-01-12 Palm Beach Post (Florida)    414
-## 3423 26085541 2009-01-20                     MSNBC   7745
-## 4710 26089587 2009-01-16          Fox News Network   7924
-```
-
-```r
-head(rownames(dtm_filtered))
-```
-
-```
-## [1] "26074690" "26079516" "26080505" "26084977" "26085541" "26089587"
-```
-As you can see, the `meta` variable contains the date and medium per article, with the `meta$id` matching the rownames of the document-term matrix. 
-Note that we put the meta data in the same ordering as the documents in m to make sure that they line up.
-
-Since this data set contains too many separate sources to plot, we create an "other" category for all but the largest sources
-
-
-```r
-top_media = head(sort(table(meta$medium), decreasing = T), n=10)
-meta$medium2 = ifelse(meta$medium %in% names(top_media), as.character(meta$medium), "(other)")
-table(meta$medium2)
-```
-
-```
-## 
-##                Associated Press Online 
-##                                    607 
-##                                    CNN 
-##                                    330 
-##                                CNN.com 
-##                                    133 
-##                        Digital Journal 
-##                                    123 
-##            National Public Radio (NPR) 
-##                                    159 
-##                   NBC News Transcripts 
-##                                    133 
-##                                (other) 
-##                                   4300 
-## Pittsburgh Post-Gazette (Pennsylvania) 
-##                                    109 
-##                    States News Service 
-##                                    668 
-##                     The New York Times 
-##                                    197 
-##                    The Washington Post 
-##                                    133
-```
-Now, we can use the `topmod.plot.topic` function to create a combined graph with the word cloud and distribution over time and media:
-
-
-```r
-topmod.plot.topic(m, 9, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
-```
-
-![plot of chunk unnamed-chunk-35](figure/unnamed-chunk-351.png) 
-
-```r
-topmod.plot.topic(m, 7, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
-```
-
-![plot of chunk unnamed-chunk-35](figure/unnamed-chunk-352.png) 
-
-This shows that the press agency strongly focuses on episodic coverage, while CNN has more political stories.
-Also, you can see that the initial coverage is dominated by the war itself, while later news is more politicised. 
-
-Since topic modeling is based on the document-term matrix, it is very important to preprocess this matrix before fitting a model.
-In this case, we used the dtm_filtered matrix created above, which is lemmatized text selected on minimum and maximum frequency.
-It can also be interesting to use e.g. only nouns:
-
-
-```r
-set.seed(123456)
-nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
-dtm.nouns = dtm.create(nouns$aid, nouns$lemma)
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
-m.nouns = topmod.lda.fit(dtm.nouns, K = 10, alpha = .5)
-terms(m.nouns, 10)
-```
-
-```
-##       Topic 1      Topic 2      Topic 3  Topic 4   Topic 5         
-##  [1,] "money"      "official"   "year"   "lot"     "president"     
-##  [2,] "job"        "border"     "time"   "video"   "administration"
-##  [3,] "tax"        "leader"     "child"  "thing"   "country"       
-##  [4,] "state"      "truce"      "family" "today"   "policy"        
-##  [5,] "economy"    "effort"     "school" "clip"    "issue"         
-##  [6,] "governor"   "offensive"  "man"    "time"    "question"      
-##  [7,] "year"       "talk"       "home"   "end"     "year"          
-##  [8,] "plan"       "force"      "life"   "way"     "time"          
-##  [9,] "today"      "resolution" "woman"  "morning" "world"         
-## [10,] "government" "minister"   "event"  "right"   "way"           
-##       Topic 6      Topic 7     Topic 8       Topic 9   Topic 10    
-##  [1,] "police"     "ground"    "aid"         "percent" "peace"     
-##  [2,] "group"      "fire"      "situation"   "price"   "war"       
-##  [3,] "protest"    "civilian"  "food"        "year"    "world"     
-##  [4,] "newspaper"  "official"  "ceasefire"   "market"  "state"     
-##  [5,] "email"      "soldier"   "resolution"  "oil"     "conflict"  
-##  [6,] "fax"        "area"      "supplies"    "gas"     "year"      
-##  [7,] "copyright"  "force"     "child"       "company" "side"      
-##  [8,] "protester"  "militant"  "conflict"    "stock"   "civilian"  
-##  [9,] "government" "operation" "information" "week"    "government"
-## [10,] "leader"     "border"    "civilian"    "barrel"  "violence"
-```
-
-As you can see, this gives similar topics as above, but without the proper names they are more difficult to interpret. 
-Doing the same for verbs gives a different take on things, yielding semantic classes rather than substantive topics:
-
-
-```r
-set.seed(123456)
-verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
-dtm.verbs = dtm.create(verbs$aid, verbs$lemma)
-```
-
-```
-## (Duplicate row-column matches occured. Values of duplicates are added up)
-```
-
-```r
-m.verbs = topmod.lda.fit(dtm.verbs, K = 5, alpha = .5)
-terms(m.verbs, 10)
-```
-
-```
-##       Topic 1   Topic 2    Topic 3 Topic 4   Topic 5   
-##  [1,] "kill"    "must"     "get"   "should"  "could"   
-##  [2,] "fire"    "continue" "know"  "see"     "make"    
-##  [3,] "use"     "follow"   "think" "write"   "may"     
-##  [4,] "wound"   "include"  "see"   "send"    "fall"    
-##  [5,] "hit"     "stop"     "want"  "make"    "expect"  
-##  [6,] "include" "end"      "come"  "live"    "rise"    
-##  [7,] "begin"   "work"     "make"  "stop"    "include" 
-##  [8,] "launch"  "make"     "look"  "give"    "might"   
-##  [9,] "accord"  "need"     "talk"  "use"     "pay"     
-## [10,] "stop"    "provide"  "let"   "support" "continue"
-```
+Note that the warnings given by these commands are relatively harmless: it means that some words are skipped because it couldn't find a good place for them in the word cloud. 

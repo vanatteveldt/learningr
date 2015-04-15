@@ -1,0 +1,67 @@
+Topic Modeling
+-------
+
+Topics can be seen as groups of words that cluster together.
+Similar to factor analysis, topic modeling reduces the dimensionality of the feature space (the term-document matrix)
+assuming that the latent factors (the topics) will correspond to meaningful latent classes (e.g. issues, frames).
+We can use the document-term matrix from the `sotu` dataset in `topicbrowser`, which contains the the nouns, names and adjectives from Bush' and Obama's State of the Union addresses. 
+With this dtm, a topic model can be trained using the `LDA` function  from the `topicmodels` package.
+We specify that we want to use the Gibbs sampler with 200 iterations.
+
+```{r}
+library(topicbrowser)
+library(topicmodels)
+data(sotu)
+set.seed(12345)
+m = LDA(sotu.dtm, k = 10, method="Gibbs", control=list(iter=200))
+```
+
+Note that set.seed makes sure that if the function is run again, you get the same results
+(which would normally not be the case since LDA is non-deterministic).
+
+The resulting LDA model `m` can be inspected and plotted in a variety of ways,
+the simplist of which is listing the most important words per topic using `terms`:
+
+```{r}
+terms(m, 10)
+```
+
+Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
+Dot example, topic 10 seems to be about health care, while topic 8 deals with war and security.
+
+The package `topicbrowser` contains a number of useful functions for plotting topics and listing the top documents per topic.
+Let's plot the word ckoud for topic 8:
+
+```{r}
+plot_wordcloud(m, topic_nr=8)
+```
+
+To make richer visualizations, we combine the LDA model with the original tokens and the metadata into a 'clusterinfo' object:
+
+```{r}
+info = clusterinfo(m, sotu.tokens$lemma, sotu.tokens$aid, words=sotu.tokens$word, meta=sotu.meta)
+```
+
+We can use this to e.g. add topic use over time to the graph:
+
+```{r, warning=FALSE}
+plot_wordcloud_time(clusterinfo=info, topic_nr=8, time_interval="year")
+```
+
+And to create a network visualization rather than a normal word cloud:
+
+```{r}
+plot_semnet(clusterinfo=info, topic_nr=10)
+```
+
+Finally, we can create a 'topic browser' HTML page which contains an overview of all topics. See e.g. the example at [rpubs](http://rpubs.com/Anoniem/72883)
+
+```{r, eval=FALSE}
+createTopicBrowser(info)
+```
+
+We can also include the 'semantic network' topic representations by including that in the per-topic plot functions:
+
+```{r, eval=FALSE}
+createTopicBrowser(info, plotfunction.pertopic=c(plot_wordcloud_time, plot_semnet))
+```

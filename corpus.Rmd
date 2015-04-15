@@ -104,8 +104,7 @@ Since the token list is a regular R data frame, we can use normal selection to e
 
 ```{r, warning=FALSE, message=FALSE}
 library(corpustools)
-t = t[t$pos1 %in% c("V", "N"), ]
-dtm = dtm.create(documents=t$sentence, terms=t$lemma)
+dtm = dtm.create(documents=t$sentence, terms=t$lemma, filter=t$pos1 %in% c('V', 'N'), minfreq=0)
 as.matrix(dtm)
 ```
 
@@ -129,7 +128,7 @@ And we can then lemmatize this article and download the results directly to R
 using `amcat.gettokens`:
 
 ```{r}
-amcat.gettokens(conn, project=688, articleset = aset, module = "corenlp_lemmatize")
+amcat.gettokens(conn, project=1, articleset = aset, module = "corenlp_lemmatize")
 ```
 
 And we can see that e.g. for "is" the lemma "be" is given. 
@@ -138,32 +137,27 @@ This can be switched off by giving `drop=NULL` as extra argument.
 
 
 
-For a more serious application, we will use an existing article set: [set 17667](https://amcat.nl/navigator/projects/688/articlesets/) in project 688, which contains American newspaper coverage about the 2009 Gaza war.
+For a more serious application, we will use an existing article set: [set 16017](https://amcat.nl/navigator/projects/559/articlesets/16017/) in project 559, which contains the state of the Union speeches by Bush and Obama (each document is a single paragraph)
 The analysed tokens for this set can be downloaded with the following command:
 
 ```{r eval=FALSE}
-t = amcat.gettokens(conn, project=688, articleset = 17667, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
-save(t, file="tokens_17667.rda")
+sotu.tokens = amcat.gettokens(conn, project=559, articleset = 16017, module = "corenlp_lemmatize", page_size = 100)
 ```
 
-Note that the first time you run this command on an article set, the articles will be preprocessed on the fly, so it could take quite a long time. 
-After this, however, the results are stored in the AmCAT database so getting te tokens should go relatively quickly, although still only around 10 articles per second - so it is wise to save the tokens after getting them using R's `save` command, so they can be loaded quickly 
-```{r eval=FALSE}
-save(t, file="tokens_17667.rda")
+This data is also available directly from the semnet package:
+
+```{r eval}
+data(sotu)
+nrow(sotu.tokens)
+head(sotu.tokens, n=20)
 ```
 
-```{r}
-load("tokens_17667.rda")
-nrow(t)
-head(t, n=20)
-```
-
-As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 8 million tokens rather than 6.
+As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 100 thousand tokens rather than 6.
 We can create a document-term matrix using the same commands as above, restricting ourselves to nouns, names, verbs, and adjectives:
 
 
 ```{r, warning=FALSE}
-t = t[t$pos1 %in% c("V", "N", 'M', 'A'), ]
+t = sotu.tokens[sotu.tokens$pos1 %in% c("N", 'M', 'A'), ]
 dtm = dtm.create(documents=t$aid, terms=t$lemma)
 dtm
 ```
@@ -192,7 +186,7 @@ freq = freq[order(-freq)]
 head(freq, n=10)
 ```
 
-As can be seen, the most frequent terms are all the main actors/countries involved and the 'stop' words be, have, etc.
+As can be seen, the most frequent terms are America and recurring issues like jobs and taxes.
 It can be useful to compute different metrics per term, such as term frequency, document frequency (how many documents does it occur), and td.idf (term frequency * inverse document frequency, which removes both rare and overly frequent terms). 
 The function `term.statistics` from the `corpus-tools` package provides this functionality:
 
@@ -200,7 +194,7 @@ The function `term.statistics` from the `corpus-tools` package provides this fun
 ```{r}
 terms = term.statistics(dtm)
 terms = terms[order(-terms$termfreq), ]
-head(terms)
+head(terms, 10)
 ```
 
 As you can see, for each word the total frequency and the relative document frequency is listed, 
@@ -208,7 +202,7 @@ as well as some basic information on the number of characters and the occurrence
 This allows us to create a 'common sense' filter to reduce the amount of terms, for example removing all words containing a letter or punctuation mark, and all short (`characters<=2`) infrequent (`termfreq<25`) and overly frequent (`reldocfreq>.5`) words:
 
 ```{r}
-subset = terms[!terms$number & !terms$nonalpha & terms$characters>2 & terms$termfreq>=25 & terms$reldocfreq<.5, ]
+subset = terms[!terms$number & !terms$nonalpha & terms$characters>2 & terms$termfreq>=25 & terms$reldocfreq<.25, ]
 nrow(subset)
 head(subset, n=10)
 ```
@@ -219,7 +213,7 @@ To create a new document-term matrix with only these terms,
 we can use normal matrix indexing on the columns (which contain the words):
 
 ```{r}
-dtm_filtered = dtm[, colnames(dtm) %in% subset$term]
+dtm_filtered = dtm.filter(dtm, terms=subset$term)
 dim(dtm_filtered)
 ```
 
@@ -229,183 +223,64 @@ to visualize the top words as a word cloud:
 
 ```{r, warning=F}
 dtm.wordcloud(dtm_filtered)
-```
 
-Note that such corpus analytics might not seem very informative, but it is quite easy to use this to e.g. see which names occur in a set of documents, as we do with the following commands (filtering t on `pos1==M` for naMe):
 
-```{r, warning=FALSE}
-names = t[t$pos1 == 'M', ]
-dtm_names = dtm.create(names$aid, names$lemma)
-name.terms = term.statistics(dtm_names)
-name.terms  = name.terms [order(-name.terms$termfreq), ]
-head(name.terms )
-```
 
-And of course we can visualize this (using a square root transformation of the frequency to prevent the top names from dominating the word cloud):
-
-```{r, warning=F}
-dtm.wordcloud(dtm_names, freq.fun = sqrt)
 ```
 
 Comparing corpora
 ----
 
 Another useful thing we can do is comparing two corpora: 
-Which words or names are mentioned more in e.g. one country or speech compared to another.
-To do this, we get the tokens from set 17668, which contains the coverage of the Gaza war in newspapers from Islamic countries. 
+Which words or names are mentioned more in e.g. Bush' speeches than Obama's.
 
+To do this, we split the dtm in separate dtm's for Bush and Obama.
+For this, we select docment ids using the `headline` column in the metadata from `sotu.meta`, and then use the `dtm.filter` function:
 
-```{r eval=FALSE}
-t2 = amcat.gettokens(conn, project=688, articleset = 17668, module = "corenlp_lemmatize", page_size = 100, drop=NULL)
-save(t2, file="tokens_17668.rda")
-```
-
-And we create a term-document matrix from the second article set as well:
-
-```{r, warning=FALSE}
-load("tokens_17668.rda")
-t2 = t2[t2$pos1 %in% c("V", "N", 'M', 'A'), ]
-dtm2 = dtm.create(documents=t2$aid, terms=t2$lemma)
-dtm2
-```
-
-Let's also remove the non-informative words from this matrix:
 
 ```{r}
-terms2 = term.statistics(dtm2)
-subset2 = terms2[!terms2$number & !terms2$nonalpha & terms2$characters>2 & terms2$termfreq>=25 & terms2$reldocfreq<.5, ]
-dtm2_filtered = dtm2[, colnames(dtm2) %in% subset2$term]
+head(sotu.meta)
+obama.docs = sotu.meta$id[sotu.meta$headline == "Barack Obama"]
+dtm.obama = dtm.filter(dtm, documents=obama.docs)
+bush.docs = sotu.meta$id[sotu.meta$headline == "George W. Bush"]
+dtm.bush = dtm.filter(dtm, documents=bush.docs)
 ```
 
-So how can we check which words are more frequent in the American discourse than in the 'Islamic' discource?
+So how can we check which words are more frequent in Bush' speeches than in Obama's speeches?
 The function `corpora.compare` provides this functionality, given two document-term matrices:
 
 ```{r}
-cmp = corpora.compare(dtm_filtered, dtm2_filtered)
+cmp = corpora.compare(dtm.obama, dtm.bush)
 cmp = cmp[order(cmp$over), ]
 head(cmp)
 ```
 
-As you can see, for each term the absolute and relative frequencies are given for both corpora. 
-In this case, `x` is American newspapers and `y` is Muslim-country newspapers. 
-The 'over' column shows the amount of overrepresentation: a high number indicates that it is relatively more frequent in the x (positive) corpus. 'Chi' is a measure of how unexpected this overrepresentation is: a high number means that it is a very typical term for that corpus.
-Since the output above is sorted by ascending overrepresentation, these terms are the overrepresented terms in the Muslim-country newspapers. Let's have a look at the American papers:
+For each term, this data frame contains the frequency in the 'x' and 'y' corpora (here, Obama and Bush).
+Also, it gives the relative frequency in these corpora (normalizing for total corpus size)
+and the overrepresentation in the 'x' corpus and the chi-squared value for that overrepresentation.
+So, Bush used the word terrorist 105 times, while Obama used it only 13 times, and in relative terms Bush used it about four times as often, which is highly significant. 
+
+Which words did Obama use most compared to Bush?
 
 ```{r}
-cmp = cmp[order(-cmp$over), ]
-head(cmp, n=10)
+cmp = cmp[order(cmp$over, decreasing=T), ]
+head(cmp)
 ```
 
-So, to draw very precocious conclusions, Americans seem to talk about Palestinians and politics, 
-while the Muslim-countries talk about Hamas and fighting.
+So, while Bush talks about freedom, war, and terror, Obama talks more about industry, banks and education. 
 
-Let's make a word cloud of the words in the American papers, with size indicating chi-square overrepresentation:
+Let's make a word cloud of Obama' words, with size indicating chi-square overrepresentation:
 
 ```{r, warning=F}
-us = cmp[cmp$over > 1,]
-dtm.wordcloud(terms = us$term, freqs = us$chi)
+obama = cmp[cmp$over > 1,]
+dtm.wordcloud(terms = obama$term, freqs = obama$chi)
 ```
 
-And for the Muslim-country papers:
+And Bush:
 
 ```{r, warning=F}
-mus = cmp[cmp$over < 1,]
-dtm.wordcloud(terms = mus$term, freqs = mus$chi, freq.fun = sqrt)
+bush = cmp[cmp$over < 1,]
+dtm.wordcloud(terms = bush$term, freqs = bush$chi)
 ```
 
-As you can see, these differences are for a large part due to place names: American papers talk about American states and cities, while Muslim-country papers talk about their localities. 
-
-So, it can be more informative to exclude names, and focus instead on e.g. the used nouns or verbs:
-
-```{r, warning=F}
-nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
-nouns2 = t2[t2$pos1 == "N" & t2$lemma %in% subset2$term, ]
-cmp = corpora.compare(dtm.create(nouns$aid, nouns$lemma), dtm.create(nouns2$aid, nouns2$lemma))
-with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi))
-with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
-
-verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
-verbs2 = t2[t2$pos1 == "V" & t2$lemma %in% subset2$term, ]
-cmp = corpora.compare(dtm.create(verbs$aid, verbs$lemma), dtm.create(verbs2$aid, verbs2$lemma))
-with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=sqrt))
-with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi, freq.fun=log))
-```
-
-Topic Modeling
--------
-
-Topics can be seen as groups of words that cluster together.
-Similar to factor analysis, topic modeling reduces the dimensionality of the feature space (the term-document matrix)
-assuming that the latent factors (the topics) will correspond to meaningful latent classes (e.g. issues, frames)
-With a given dtm, a topic model can be trained using the `topmod.lda.fit` function:
-
-```{r}
-set.seed(12345)
-m = topmod.lda.fit(dtm_filtered, K = 10, alpha = .5)
-terms(m, 10)
-```
-
-The `terms` command gives the top N terms per topic, with each column forming a topic.
-Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
-For example, topic 3 seems to be about the conflict itself (echoing Tolstoy), while topic 9 describes the episodic action on the ground.
-Topic 4 and 6 seem mainly about international (Arabic and UN) politics, while topic 7 covers American politics.
-Topics 1 and 10 are seemingly 'mix-in' topics with various verbs, although it would be better to see usage in context for interpreting such less obvious topics.
-(note the use of `set.seed` to make sure that running this again will yield the same topics. 
-Since LDA topics are unordered, running it again will create (slightly) different topics, but certainly with different numbers)
-
-Of course, we can also create word clouds of each topic to visualize the top-words:
-
-```{r, warning=FALSE}
-topmod.plot.wordcloud(m, topic_nr = 9)
-```
-
-If we retrieve the meta-date (e.g. article dates, medium), we can make a more informative plot:
-
-```{r, warning=FALSE, message=FALSE}
-meta = amcat.getarticlemeta(conn, set=17667)
-meta = meta[match(m@documents, meta$id), ]
-head(meta)
-head(rownames(dtm_filtered))
-```
-As you can see, the `meta` variable contains the date and medium per article, with the `meta$id` matching the rownames of the document-term matrix. 
-Note that we put the meta data in the same ordering as the documents in m to make sure that they line up.
-
-Since this data set contains too many separate sources to plot, we create an "other" category for all but the largest sources
-
-```{r}
-top_media = head(sort(table(meta$medium), decreasing = T), n=10)
-meta$medium2 = ifelse(meta$medium %in% names(top_media), as.character(meta$medium), "(other)")
-table(meta$medium2)
-```
-Now, we can use the `topmod.plot.topic` function to create a combined graph with the word cloud and distribution over time and media:
-
-```{r, warning=FALSE}
-topmod.plot.topic(m, 9, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
-topmod.plot.topic(m, 7, time_var = meta$date, category_var = meta$medium2, date_interval = "day")
-```
-
-This shows that the press agency strongly focuses on episodic coverage, while CNN has more political stories.
-Also, you can see that the initial coverage is dominated by the war itself, while later news is more politicised. 
-
-Since topic modeling is based on the document-term matrix, it is very important to preprocess this matrix before fitting a model.
-In this case, we used the dtm_filtered matrix created above, which is lemmatized text selected on minimum and maximum frequency.
-It can also be interesting to use e.g. only nouns:
-
-```{r, warning=F}
-set.seed(123456)
-nouns = t[t$pos1 == "N" & t$lemma %in% subset$term, ]
-dtm.nouns = dtm.create(nouns$aid, nouns$lemma)
-m.nouns = topmod.lda.fit(dtm.nouns, K = 10, alpha = .5)
-terms(m.nouns, 10)
-```
-
-As you can see, this gives similar topics as above, but without the proper names they are more difficult to interpret. 
-Doing the same for verbs gives a different take on things, yielding semantic classes rather than substantive topics:
-
-```{r, warning=F}
-set.seed(123456)
-verbs = t[t$pos1 == "V" & t$lemma %in% subset$term, ]
-dtm.verbs = dtm.create(verbs$aid, verbs$lemma)
-m.verbs = topmod.lda.fit(dtm.verbs, K = 5, alpha = .5)
-terms(m.verbs, 10)
-```
+Note that the warnings given by these commands are relatively harmless: it means that some words are skipped because it couldn't find a good place for them in the word cloud. 
