@@ -16,6 +16,7 @@ library(topicbrowser)
 ```
 ## Loading required package: RColorBrewer
 ## Loading required package: wordcloud
+## Loading required package: Rcpp
 ## Loading required package: Matrix
 ## Loading required package: reshape2
 ## Loading required package: markdown
@@ -30,10 +31,13 @@ library(topicbrowser)
 
 ```r
 library(topicmodels)
+library(tm)
 data(sotu)
+sotu.dtm = weightTf(sotu.dtm)
 set.seed(12345)
-m = LDA(sotu.dtm, k = 10, method="Gibbs", control=list(iter=200))
+m = LDA(sotu.dtm, k = 10, method = "Gibbs", control = list(iter = 200))
 ```
+
 
 Note that set.seed makes sure that if the function is run again, you get the same results
 (which would normally not be the case since LDA is non-deterministic).
@@ -47,29 +51,30 @@ terms(m, 10)
 ```
 
 ```
-##       Topic 1      Topic 2     Topic 3      Topic 4     Topic 5    
-##  [1,] "new"        "child"     "year"       "world"     "tax"      
-##  [2,] "energy"     "school"    "next"       "freedom"   "family"   
-##  [3,] "year"       "life"      "government" "United"    "year"     
-##  [4,] "home"       "education" "budget"     "weapon"    "more"     
-##  [5,] "power"      "college"   "way"        "terrorist" "Americans"
-##  [6,] "technology" "better"    "deficit"    "free"      "plan"     
-##  [7,] "clean"      "country"   "spending"   "enemy"     "worker"   
-##  [8,] "more"       "student"   "decade"     "threat"    "money"    
-##  [9,] "research"   "community" "program"    "peace"     "Security" 
-## [10,] "oil"        "many"      "last"       "terror"    "Social"   
-##       Topic 6          Topic 7      Topic 8    Topic 9    Topic 10   
-##  [1,] "people"         "America"    "nation"   "job"      "Congress" 
-##  [2,] "american"       "future"     "Iraq"     "economy"  "health"   
-##  [3,] "day"            "goal"       "own"      "business" "care"     
-##  [4,] "other"          "new"        "man"      "time"     "Americans"
-##  [5,] "country"        "work"       "woman"    "more"     "law"      
-##  [6,] "responsibility" "tonight"    "security" "same"     "reform"   
-##  [7,] "citizen"        "market"     "war"      "company"  "system"   
-##  [8,] "effort"         "part"       "country"  "place"    "cost"     
-##  [9,] "nation"         "generation" "force"    "today"    "good"     
-## [10,] "great"          "right"      "Qaida"    "people"   "insurance"
+##       Topic 1     Topic 2      Topic 3   Topic 4      Topic 5   
+##  [1,] "Iraq"      "country"    "world"   "energy"     "job"     
+##  [2,] "terrorist" "government" "America" "way"        "new"     
+##  [3,] "security"  "law"        "United"  "new"        "economy" 
+##  [4,] "man"       "work"       "States"  "power"      "business"
+##  [5,] "woman"     "America"    "weapon"  "Security"   "american"
+##  [6,] "war"       "day"        "nuclear" "system"     "worker"  
+##  [7,] "country"   "other"      "threat"  "technology" "today"   
+##  [8,] "force"     "many"       "own"     "Social"     "company" 
+##  [9,] "leader"    "effort"     "regime"  "future"     "more"    
+## [10,] "enemy"     "right"      "action"  "clean"      "market"  
+##       Topic 6    Topic 7          Topic 8     Topic 9   Topic 10   
+##  [1,] "year"     "time"           "tax"       "people"  "child"    
+##  [2,] "more"     "Congress"       "Americans" "America" "school"   
+##  [3,] "last"     "people"         "health"    "nation"  "education"
+##  [4,] "next"     "responsibility" "family"    "freedom" "college"  
+##  [5,] "budget"   "first"          "care"      "great"   "life"     
+##  [6,] "american" "same"           "reform"    "terror"  "good"     
+##  [7,] "deficit"  "problem"        "plan"      "peace"   "student"  
+##  [8,] "program"  "day"            "cost"      "free"    "better"   
+##  [9,] "spending" "party"          "money"     "citizen" "high"     
+## [10,] "decade"   "month"          "insurance" "hope"    "sure"
 ```
+
 
 Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
 Dot example, topic 10 seems to be about health care, while topic 8 deals with war and security.
@@ -79,32 +84,36 @@ Let's plot the word ckoud for topic 8:
 
 
 ```r
-plot_wordcloud(m, topic_nr=8)
+plot_wordcloud(m, topic_nr = 8)
 ```
 
 ![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3.png) 
+
 
 To make richer visualizations, we combine the LDA model with the original tokens and the metadata into a 'clusterinfo' object:
 
 
 ```r
-info = clusterinfo(m, sotu.tokens$lemma, sotu.tokens$aid, words=sotu.tokens$word, meta=sotu.meta)
+info = clusterinfo(m, sotu.tokens$lemma, sotu.tokens$aid, words = sotu.tokens$word, 
+    meta = sotu.meta)
 ```
+
 
 We can use this to e.g. add topic use over time to the graph:
 
 
 ```r
-plot_wordcloud_time(clusterinfo=info, topic_nr=8, time_interval="year")
+plot_wordcloud_time(clusterinfo = info, topic_nr = 8, time_interval = "year")
 ```
 
 ![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+
 
 And to create a network visualization rather than a normal word cloud:
 
 
 ```r
-plot_semnet(clusterinfo=info, topic_nr=10)
+plot_semnet(clusterinfo = info, topic_nr = 10)
 ```
 
 ```
@@ -119,8 +128,6 @@ plot_semnet(clusterinfo=info, topic_nr=10)
 ##     as.Date, as.Date.numeric
 ## 
 ## Loading required package: scales
-## Loading required package: tm
-## Loading required package: NLP
 ## Loading required package: slam
 ## Loading required package: igraph
 ## Note: method with signature 'CsparseMatrix#Matrix#missing#replValue' chosen for function '[<-',
@@ -130,6 +137,7 @@ plot_semnet(clusterinfo=info, topic_nr=10)
 
 ![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
 
+
 Finally, we can create a 'topic browser' HTML page which contains an overview of all topics. See e.g. the example at [rpubs](http://rpubs.com/Anoniem/72883)
 
 
@@ -137,9 +145,11 @@ Finally, we can create a 'topic browser' HTML page which contains an overview of
 createTopicBrowser(info)
 ```
 
+
 We can also include the 'semantic network' topic representations by including that in the per-topic plot functions:
 
 
 ```r
-createTopicBrowser(info, plotfunction.pertopic=c(plot_wordcloud_time, plot_semnet))
+createTopicBrowser(info, plotfunction.pertopic = c(plot_wordcloud_time, plot_semnet))
 ```
+

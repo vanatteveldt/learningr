@@ -11,7 +11,9 @@ We specify that we want to use the Gibbs sampler with 200 iterations.
 ```{r}
 library(topicbrowser)
 library(topicmodels)
+library(tm)
 data(sotu)
+sotu.dtm = weightTf(sotu.dtm)
 set.seed(12345)
 m = LDA(sotu.dtm, k = 10, method="Gibbs", control=list(iter=200))
 ```
