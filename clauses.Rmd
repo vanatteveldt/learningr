@@ -28,7 +28,6 @@ To show this, let's get the same data set containing American coverage of the Ga
 
 ```{r, eval=FALSE}
 t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, drop=NULL)
-t3 = amcat.tokens.unique_indices(t3)
 save(t3, file="clauses_17667b.rda")
 ```
 
