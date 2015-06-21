@@ -6,7 +6,8 @@ cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date
 > This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
 > but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
 > For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
-> http://vanatteveldt.com/uploads/rcourse/data
+> https://github.com/vanatteveldt/learningr/tree/master/data.
+> If you're accessing this tutorial from the githup project, these files should be in your 'data' sub folder automatically.
 
 Merging and transforming data in R
 ==================================
@@ -15,10 +16,8 @@ Let's have a closer look at the relation at the accumulation of capital in vario
 In chapter 5, separate values are introduced for private and public capital: 
 
 ```{r}
-download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/private_capital.csv", destfile="private_capital.csv")
-private.capital = read.csv("private_capital.csv")
-download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/public_capital.csv", destfile="public_capital.csv")
-public.capital = read.csv("public_capital.csv")
+private.capital = read.csv("data/private_capital.csv")
+public.capital = read.csv("data/public_capital.csv")
 ```
 
 Combining data using cbind
@@ -56,16 +55,17 @@ head(capital)
 /Note that using `merge` rather than `cbind` would be more natural and would prevent these problems, but it is good to know how cbind and renaming works in any case/
 
 In order to rename variables more easily in a 'manual' fashion, the `rename` command from the `plyr` package can be used. 
-If you get an error about missing a package, you can install it using the install.packages function:
 
-```r
-install.packages("reshape")  # only needed the first time
+Note, if you get an error about missing a package, you can install it using the install.packages function (or you can use the 'Packages' panel in the bottom right in RStudio):
+
+```{r, eval=FALSE}
+install.packages("plyr")  # only needed the first time
 ```
 
-No, we can use `library(plyr)` to load the package, and use the rename command:
+Now, we can use `library(plyr)` to load the package, and use the rename command:
 
 ```{r}
-library(reshape)
+library(plyr)
 capital = rename(capital, c("U.K."="UK", "U.S."="US", "public.U.K."="public.UK", "public.U.S."="public.US"))
 head(capital)
 ```
@@ -83,10 +83,10 @@ head(total.capital)
 
 However, a more general way that will afford more flexibility later is to first transform both datasets from wide into long formats
 (e.g. convert the variables to cases), and then merge the two sets. 
-The `reshape` package has a function `melt` that transforms variables to cases based on a list of index variables that identify the cases.
+The `reshape2` package has a function `melt` that transforms variables to cases based on a list of index variables that identify the cases.
 
 ```{r}
-library(reshape)
+library(reshape2)
 public.long = melt(public.capital, id.vars="Year")
 private.long = melt(private.capital, id.vars="Year")
 head(public.long)
@@ -118,10 +118,10 @@ Variables to cases
 ---
 
 The counterparg of melting is called casting.
-The `cast` function works by using a 'casting formula' `rows ~ columns` to specify which variables to place in the rows and columns of the resulting data frame.
+The `dcast` function works by using a 'casting formula' `rows ~ columns` to specify which variables to place in the rows and columns of the resulting data frame.
 
 ```{r}
-d = cast(capital, Year ~ Country, value="Total")
+d = dcast(capital, Year ~ Country, value.var="Total")
 head(d)
 ```
 
@@ -142,7 +142,7 @@ table(capital$Decade, capital$Year)
 Now, we use the new Decade variable in the casting formula, and specify an aggregation function `mean`:
 
 ```{r}
-d = cast(capital, Decade ~ Country, value="Total", fun.aggregate=mean)
+d = dcast(capital, Decade ~ Country, value.var="Total", fun.aggregate=mean)
 head(d)
 ```
 
@@ -161,7 +161,7 @@ head(aggregated)
 
 *Note*: the `by=` argument in aggregate needs to be a list or data frame. Since `capital[, "Decade"]` returns a vector rather than a data frame, you must use either `capital["Decade"]` (ommitting the comma) or `capital[, "Decade", drop=F]`. For example, the first attempt below to aggregate the recent values per country fails because of this problem:
 
-```{r}
+```{r,error=TRUE}
 aggregated = aggregate(capital["Total"], by=capital[, "Country"], FUN=mean)
 aggregated = aggregate(capital["Total"], by=capital[, "Country", drop=F], FUN=mean)
 head(aggregated)
