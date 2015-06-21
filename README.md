@@ -3,7 +3,7 @@ Learning R
 
 R is a very powerful and flexible statistics package and programming language.
 
-This repository contains a number of 'howto' files aimed to providing an introduction to R and some os its possibilities.
+This repository contains a number of 'howto' files aimed to providing an introduction to R and some os its possibilities. 
 
 Some other great sites for learning R are:
 - [OpenIntro statistics](http://openintro.org/stat/labs.php) with a number of good statistics 'labs' in R
@@ -14,6 +14,8 @@ To install R and RStudio, please see [lab 0 of the OpenIntro statistics book](ht
 
 General Howto's
 ----
+
+(see also this short [overview of useful R functions](functions.md))
 
 - Getting started
   - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/1_r_calculator.Rmd))
