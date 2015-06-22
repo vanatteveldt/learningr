@@ -61,7 +61,7 @@ img {
 
 
 
-<pre><code>## (C) (cc by-sa) Wouter van Atteveldt, file generated juni 21 2015</code></pre>
+<pre><code>## (C) (cc by-sa) Wouter van Atteveldt, file generated juni 22 2015</code></pre>
 <blockquote>
 <p>Note on the data used in this howto: This data can be downloaded from <a href="http://piketty.pse.ens.fr/files/capital21c/en/xls/" class="uri">http://piketty.pse.ens.fr/files/capital21c/en/xls/</a>, but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. For that reason, I’ve extracted csv files for some interesting tables that I’ve uploaded to <a href="https://github.com/vanatteveldt/learningr/tree/master/data" class="uri">https://github.com/vanatteveldt/learningr/tree/master/data</a>. If you’re accessing this tutorial from the githup project, these files should be in your ‘data’ sub folder automatically.</p>
 </blockquote>
@@ -192,7 +192,7 @@ head(capital)</code></pre>
 <p>So now we have our data ready. Let’s rename the column names to something more sensible, and then compute the total capital. We also save the file for later use using the <code>save</code> command.</p>
 <pre class="r"><code>colnames(capital) = c(&quot;Year&quot;, &quot;Country&quot;, &quot;Public&quot;, &quot;Private&quot;)
 capital$Total = capital$Private + capital$Public
-save(capital, file=&quot;capital.rdata&quot;)</code></pre>
+save(capital, file=&quot;data/capital.rdata&quot;)</code></pre>
 </div>
 <div id="variables-to-cases" class="section level2">
 <h2>Variables to cases</h2>

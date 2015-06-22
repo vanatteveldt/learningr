@@ -15,9 +15,7 @@ In this hands-on we continue with the `capital` variable created in the [transfo
 You can also download this variable from the course pages:
 
 ```{r}
-library(reshape)
-download.file("http://vanatteveldt.com/uploads/rcourse/data/capital.rdata", destfile="capital.rdata")
-load("capital.rdata")
+load("data/capital.rdata")
 head(capital)
 ```
 
@@ -46,8 +44,9 @@ We could also do a paired t-test of average accumulation per year per group by f
 Note that we first remove the NA values (for Spain).
 
 ```{r}
+library(reshape2)
 capital = na.omit(capital)
-pergroup = cast(capital, Year ~ Group, value="Private", fun.aggregate=mean)
+pergroup = dcast(capital, Year ~ Group, value.var="Private", fun.aggregate=mean)
 head(pergroup)
 ```
 

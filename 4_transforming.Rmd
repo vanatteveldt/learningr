@@ -111,7 +111,7 @@ We also save the file for later use using the `save` command.
 ```{r}
 colnames(capital) = c("Year", "Country", "Public", "Private")
 capital$Total = capital$Private + capital$Public
-save(capital, file="capital.rdata")
+save(capital, file="data/capital.rdata")
 ```
 
 Variables to cases

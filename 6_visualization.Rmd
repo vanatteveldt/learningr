@@ -6,7 +6,8 @@ cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date
 > This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
 > but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
 > For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
-> http://vanatteveldt.com/uploads/rcourse/data
+> https://github.com/vanatteveldt/learningr/tree/master/data.
+> If you're accessing this tutorial from the githup project, these files should be in your 'data' sub folder automatically.
 
 Plotting data in R
 ===
@@ -15,16 +16,15 @@ In this hands-on we continue with the `capital` variable created in the [transfo
 You can also download this variable from the course pages:
 
 ```{r}
-download.file("http://vanatteveldt.com/uploads/rcourse/data/capital.rdata", destfile="capital.rdata")
-load("capital.rdata")
+load("data/capital.rdata")
 head(capital)
 ```
 
 We also make a 'wide' vesion of this data frame using melt, and we turn the first column into the row names so all columns contain actual data:
 
 ```{r}
-library(reshape)
-wide = cast(capital, Year ~ Country, value="Total")
+library(reshape2)
+wide = dcast(capital, Year ~ Country, value.var="Total")
 head(wide)
 ```
 
@@ -104,9 +104,7 @@ For example, we could combine the capital data with the inequality data used ear
 First, we download the income data again, select the years from 1970, and melt the data into the same form as `capital`:
 ```{r}
 library(plyr)
-download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/income_toppercentile.csv", 
-              destfile="income_toppercentile.csv")
-income = read.csv("income_toppercentile.csv")
+income = read.csv("data/income_toppercentile.csv")
 income = rename(income, c("US" = "U.S."))
 income = income[income$Year >= 1970, ]
 income.long = melt(income, id.vars="Year", na.rm=T)
