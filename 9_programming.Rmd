@@ -1,0 +1,198 @@
+```{r, echo=FALSE}
+cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
+```
+
+R programming: Functions, conditions, and loops
+====
+
+All the code we've considered so far was executed from top to bottom as a list of instructions.
+Sometimes, it can be useful to control the 'flow of execution', e.g. to repeat some statements or to only execute statements in certain conditions.
+
+Conditional execution: if statements
+---
+
+A first flow control tool is the if statement. 
+The if statement tests a condition, and only executes the conditional statements if it is true.
+You can also provide an optional alternative statement which is executed if the condition is false.
+The general syntax of if statements is as follows:
+
+```
+if (condition) {
+  ...statements...
+} else {
+  ... statements
+}
+```
+
+Where the part from `else` may be omitted. 
+Note that the curly braces {} are used here to group multiple statements. 
+If you use a single statements you can omit the braces, but it never hurts to use them.
+
+A possible application of such a statement is to only execute a long-running task (such as getting data from an external data base)
+if we don't have the data in a file already.
+This can be achieved for checking for the file name and only creating the data if the saved version cannot be found:
+
+```{r}
+if (file.exists("cached_data.rda")) {
+  message("Loading data from cache")
+  load("cached_data.rda")
+} else {
+  message("Retrieving data from Internet")
+  library(foreign)
+  popdata = read.dta("http://www.ats.ucla.edu/stat/stata/examples/mlm_ma_hox/popular.dta")
+  save(popdata, file="cached_data.rda")
+}
+```
+
+The first time you execute these statements, it should indicate that it is getting the data from the Internet, and should create the `cached_data.rda` file.
+If you execute the statements again, it will load the data from that file instead of retrieving it from the Internet again.
+
+*Note*: Note the difference between the if statement and the `ifelse` function: 
+The if statement expects a single value for the condition, and will execute a piece of code depending on that value.
+By contrast, ifelse works on whole vectors, returning a list of values drawn from the 'if' and the 'else' depending on the condition.
+
+Repetition: for loops
+----
+
+In some cases, you want to run the same operation a number of times.
+For example, you might want to repeat a data cleaning operation on a number of different columns.
+Consider the income inequality data we used earlier:
+
+```{r}
+income = read.csv('data/income_toppercentile.csv')
+head(income, 10)
+```
+
+As seen earlier, the data contains a lot of missing values.
+Although this might not be sensible for time series data, suppose we would want to replace missing values with the column means.
+We can do this relatively easily for a single column:
+
+```{r}
+income$Canada[is.na(income$Canada)] = mean(income$Canada, na.rm = T)
+head(income)
+```
+
+However, if we have a lot of columns it can be tedious to repeat this line for every column,
+and that also creates the risk of making a mistake for one of the columns.
+Using a for loop we can repeat an operation for multiple cases, in this case the various columns.
+In a for loop, there is always a looping variable (or index variable) that iterates over a set of values.
+The general syntax is like this:
+
+```
+for (index in values) {
+  ... statements ...
+}
+```
+
+The statements within the curly braces are then repeated for each value in values, 
+and in each repetition the looping variable (here named 'index') will be one of those values.
+
+As a simple example, let's just print the column names of all columns except the first:
+
+```{r}
+for (col in colnames(income)[-1]) {
+  print(col)
+}
+```
+
+So, to replace the NA's by the column mean for all columns, we plug the 'Canada' statement above into the loop,
+replacing Canada by the variable `col`:
+
+```{r}
+for (col in colnames(income)[-1]) {
+  income[[col]][is.na(income[[col]])] = mean(income[[col]], na.rm = T)
+}
+head(income)
+```
+
+Writing your own Functions
+----
+
+As we saw earlier, most work in R is done through functions, ranging from simple functions like `mean()` to complex functions like `lm()` and `plot()`.
+In R, you can also define your own functions using a syntax like shown below:
+
+```
+functionname = function(arguments) {
+  ... statements ...
+  return(value)
+}
+```
+
+The `arguments` allow you to operate the function on specific values or with specific options.
+For example, above we called `mean(income$Canada, na.rm=T)`. 
+In that call, `mean` is the name of the function, and `income$Canada` and `na.rm=T` are the two arguments that we 'pass' to the function.
+Finally, a function can return a value, either with an explicit `return` call such as shown above, 
+or if such a call is ommitted the last value is returned.
+
+So, we could define a function that counts the number of non-missing values in a vector:
+
+```{r}
+n.valid = function(values) {
+  return(sum(!is.na(values)))
+}
+```
+
+Now we can call this function with different vectors like this:
+
+```{r}
+n.valid(c(1,2,3))
+n.valid(c(NA, NA, 1, 2, NA))
+```
+
+Since our new function works just like existing functions, we can use it in various places.
+
+For example, we might want to create a table of non-missing values per decade and per country.
+To do this, lets first reload the income data, melt it, and create a 'decade' column:
+
+```{r}
+library(reshape2)
+income = read.csv("data/income_toppercentile.csv")
+long = melt(income, id.vars = "Year")
+long$decade = floor(long$Year / 10) * 10
+head(long)
+```
+
+As we saw earlier, if we cast data with multiple observations per call, we can specify the function used to aggregate these observations, e.g. to get the mean:
+
+```{r}
+dcast(long, decade ~ variable, fun.aggregate = mean)
+```
+
+Now, rather than using the built-in mean function, we can use our own `n.valid` function to get the number of non-missing observations:
+
+```{r}
+dcast(long, decade ~ variable, fun.aggregate = n.valid)
+```
+
+Like for loops, functions are useful if you want to run a number of statements multiple times.
+They can also be combined, for example by turning the column mean imputation shown above into a function:
+
+```{r}
+impute.mean = function(values) {
+   values[is.na(values)] = mean(values, na.rm=T)
+   return(values)
+}
+```
+
+And we can use this function e.g. to impute the missing values for Canada:
+
+```{r}
+impute.mean(income$Canada)
+```
+
+Now that we have the impute.mean function, we can use that in our for loop:
+
+```{r}
+income = read.csv("data/income_toppercentile.csv")
+for (col in colnames(income)[-1]) {
+  income[[col]] = impute.mean(income[[col]])
+}
+head(income)
+```
+
+As a final note, similar to if and for statements, the curly braces can be ommitted if the function only contains a single statement, so the following gives the same result:
+
+```{r}
+impute.mean = function(values) ifelse(is.na(values), mean(values, na.rm=T), values)
+impute.mean(income$Canada)
+```

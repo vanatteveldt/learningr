@@ -22,9 +22,7 @@ Time series analysis consists of statistical procedures that take into account t
 In R, there is an object type `ts` that can be used to represent time series.
 
 ```{r}
-download.file("http://vanatteveldt.com/wp-content/uploads/rcourse/data/income_toppercentile.csv", 
-              destfile="income_toppercentile.csv")
-income = read.csv("income_toppercentile.csv")
+income = read.csv("data/income_toppercentile.csv")
 income = ts(income[-1], start=income[1,1], frequency=1)
 class(income)
 ```
