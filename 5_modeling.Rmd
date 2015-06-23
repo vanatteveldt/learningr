@@ -6,7 +6,8 @@ cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date
 > This data can be downloaded from http://piketty.pse.ens.fr/files/capital21c/en/xls/, 
 > but the excel format is a bit difficult to parse at it is meant to be human readable, with multiple header rows etc. 
 > For that reason, I've extracted csv files for some interesting tables that I've uploaded to 
-> http://vanatteveldt.com/uploads/rcourse/data
+> https://github.com/vanatteveldt/learningr/tree/master/data.
+> If you're accessing this tutorial from the githup project, these files should be in your 'data' sub folder automatically.
 
 Basic Modeling
 ===
