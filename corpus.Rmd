@@ -78,50 +78,32 @@ colSums(as.matrix(m))
 
 As you can see, _de_ and _hebben_ are correctly recognized as stop words, but _gegeten_ (eaten) and _kippen_ (chickens) have a different stem than _eet_ (eat) and _kip_ (chicken). German gets similarly bad results. 
 
-Getting a Term-Document matrix from AmCAT
-====
-
-AmCAT can automatically lemmatize text. 
-Before we can use it, we need to connect with a valid username and password:
-
-```{r, message=FALSE}
-library(amcatr)
-conn = amcat.connect("http://preview.amcat.nl")
-```
-
-Now, we can use the `amcat.gettokens` 
-
-```{r}
-sentence = "Chickens are birds. The bird eats"
-t = amcat.gettokens(conn, sentence=as.character(sentence), module="corenlp_lemmatize")
-t
-```
-
-As you can see, this provides real-time lemmatization and Part-of-Speech tagging using the Stanford CoreNLP toolkit:
-'are' is recognized as V(erb) and has lemma 'be'. 
-To create a term-document matrix from a list of tokens, we can use the `dtm.create` function. 
-Since the token list is a regular R data frame, we can use normal selection to e.g. select only the verbs and nouns:
-
-```{r, warning=FALSE, message=FALSE}
-library(corpustools)
-dtm = dtm.create(documents=t$sentence, terms=t$lemma, filter=t$pos1 %in% c('V', 'N'), minfreq=0)
-as.matrix(dtm)
-```
-
-
 Loading and analysing a larger dataset from AmCAT
 -----
 
-Normally, rather than ask for a single ad hoc text to be parsed, we would upload a selection of articles to AmCAT,
-after which we can call the analysis for all text at once.
-This can be done from R using the `amcat.upload.articles` function, which we now demonstrate with a single article but which can also be used to upload many articles at once:
+If we want to move beyond stemming, one option is to use AmCAT to parse articles.
+Before we can proceed, we need to save our AmCAT password (only needed once, please don't save the password in your file!)
+and log onto amcat:
+
+```{r, message=FALSE, eval=FALSE}
+library(amcatr)
+amcat.save.password("http://preview.amcat.nl", "username",  "password")
+conn = amcat.connect("https://amcat.nl")
+```
+
+```{r, echo=FALSE}
+library(amcatr)
+conn = amcat.connect("https://amcat.nl")
+```
+
+Now, we can upload articles from R using the `amcat.upload.articles` function, which we now demonstrate with a single article but which can also be used to upload many articles at once:
+
 
 ```{r}
 articles = data.frame(text = "John is a great fan of chickens, and so is Mary", date="2001-01-01", headline="test")
 
 aset = amcat.upload.articles(conn, project = 1, articleset="Test Florence", medium="test", 
                              text=articles$text, date=articles$date, headline=articles$headline)
-
 ```
 
 And we can then lemmatize this article and download the results directly to R
@@ -135,8 +117,6 @@ And we can see that e.g. for "is" the lemma "be" is given.
 Note that the words are not in order, and the two occurrences of "is" are automatically summed. 
 This can be switched off by giving `drop=NULL` as extra argument.
 
-
-
 For a more serious application, we will use an existing article set: [set 16017](https://amcat.nl/navigator/projects/559/articlesets/16017/) in project 559, which contains the state of the Union speeches by Bush and Obama (each document is a single paragraph)
 The analysed tokens for this set can be downloaded with the following command:
 
@@ -144,21 +124,22 @@ The analysed tokens for this set can be downloaded with the following command:
 sotu.tokens = amcat.gettokens(conn, project=559, articleset = 16017, module = "corenlp_lemmatize", page_size = 100)
 ```
 
+Note: the command above might take a while to complete. 
 This data is also available directly from the semnet package:
 
-```{r eval}
+```{r}
+library(semnet)
 data(sotu)
 nrow(sotu.tokens)
 head(sotu.tokens, n=20)
 ```
 
 As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 100 thousand tokens rather than 6.
-We can create a document-term matrix using the same commands as above, restricting ourselves to nouns, names, verbs, and adjectives:
-
+We can create a document-term matrix using the dtm.create command from `corputools`:
 
 ```{r, warning=FALSE}
-t = sotu.tokens[sotu.tokens$pos1 %in% c("N", 'M', 'A'), ]
-dtm = dtm.create(documents=t$aid, terms=t$lemma)
+library(corpustools)
+dtm = dtm.create(documents=sotu.tokens$aid, terms=sotu.tokens$lemma, filter=sotu.tokens$pos1 %in% c("M","N"))
 dtm
 ```
 
@@ -223,9 +204,6 @@ to visualize the top words as a word cloud:
 
 ```{r, warning=F}
 dtm.wordcloud(dtm_filtered)
-
-
-
 ```
 
 Comparing corpora

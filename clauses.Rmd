@@ -1,5 +1,5 @@
 ---
-title: "Clause analysis""
+title: "Clause analysis"
 output: html_document
 ---
 
@@ -24,15 +24,17 @@ Thus, the clause analysis breaks down the sentence into a nested structure, with
 For clauses, the subject is the semantic agent or actor doing something, while the predicate is everything else, including the verb and the direct object, if applicable. 
 
 Since this data set is "just another" R data frame containing tokens, the techniques from the first part of the workshop are directly applicable. 
-To show this, let's get the same data set containing American coverage of the Gaza war:
+To show this, we can use the `amcat.gettokens` command to get the same data set containing American coverage of the Gaza war:
 
 ```{r, eval=FALSE}
-t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, )
-save(t3, file="clauses_17667b.rda")
+# t3 = amcat.gettokens(conn, project=688, articleset = 17667, module = "clauses_en", page_size = 100, )
 ```
 
-```{r, include=FALSE}
-load("clauses_17667b.rda")
+The above command will take quite a while to run, so I prepared the tokens in a file that you can download:
+
+```{r}
+if (!file.exists("clauses.rda")) download.file("http://i.amcat.nl/clauses.rda", destfile="clauses.rda")
+load("clauses.rda")
 ```
 
 Lets have a look at the (beginning of) the second sentence of the first article:
@@ -85,14 +87,14 @@ So, there is some difference in verb use, Israel " continue (to) kill (and) laun
 However, there is also considerable overlap, which is not very strange as both actors are engaged in active military conflict.
 Of course, we can also check now of which verbs Israel is more often the subject of compared to Hamas:
 
-```{r}
+```{r, warning=F}
 cmp = corpora.compare(dtm.israel, dtm.hamas)
 with(cmp[cmp$over > 1,], dtm.wordcloud(terms=term, freqs=chi))
 ```
 
 And which as Hamas' favourite verbs:
 
-```{r}
+```{r, warning=F}
 with(cmp[cmp$over < 1,], dtm.wordcloud(terms=term, freqs=chi))
 ```
 
@@ -247,7 +249,7 @@ So, (unsurprisingly) Israel and Hamas act on each other and both act on Palestin
 
 Let's now have a look at the verbs in the US 'actions' towards Israel. 
 
-```{r}
+```{r, warning=F}
 us.il.clauses = edges$clause_id[edges$actor.x == "us" & edges$actor.y == "israel"]
 us.il.verbs = t3[!is.na(t3$clause_id) & t3$clause_id %in% us.il.clauses & t3$pos1 == "V" & !(t3$lemma %in% c("have", "be", "do", "will")), ]
 us.il.verbs.dtm = dtm.create(us.il.verbs$aid, us.il.verbs$lemma)
