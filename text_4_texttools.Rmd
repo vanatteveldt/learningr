@@ -20,7 +20,7 @@ As before, we use the `achmea.csv` that can be downloaded from [github](https://
 
 ```{r}
 library(RTextTools)
-d = read.csv("achmea.csv")
+d = read.csv("data/reviews.csv")
 ds = d[!is.na(d$SENTIMENT), ]
 m = create_matrix(ds$CONTENT, language="dutch", stemWords=F)
 ```
@@ -144,7 +144,7 @@ GLMNET <- train_model(c_full,"GLMNET")
 SVM_CLASSIFY <- classify_model(c_full, SVM)
 MAXENT_CLASSIFY <- classify_model(c_full, MAXENT)
 GLMNET_CLASSIFY <- classify_model(c_full, GLMNET)
-analytics <- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
+analytics <- create_analytics(c_full, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
 names(attributes(analytics))
 ```
 

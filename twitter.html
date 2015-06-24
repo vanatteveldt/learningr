@@ -61,163 +61,85 @@ img {
 
 
 
-<div id="machine-learning-using-rtexttools" class="section level1">
-<h1>Machine Learning using RTextTools</h1>
-<p><em>(C) 2014 Wouter van Atteveldt, license: [CC-BY-SA]</em></p>
-<p>Machine Learning or automatic text classification is a set of techniques to train a statistical model on a set of annotated (coded) training texts, that can then be used to predict the category or class of new texts.</p>
-<p>R has a number of different packages for various machine learning algorithm such as maximum entropy modeling, neural networks, and support vector machines. <code>RTextTools</code> provides an easy way to access a large number of these algorithms.</p>
-<p>In principle, like ‘classical’ statistical models, machine learning uses a number of (independent) variables called <em>features</em> to predict a target (dependent) category or class. In text mining, the independent variables are generally the term frequencies, and as such the input for the machine learning is the document-term matrix.</p>
-<div id="training-models-using-rtexttools" class="section level2">
-<h2>Training models using RTextTools</h2>
-<p>So, the first step is to create a document-term matrix. We only want to use the documents for which the sentiment is known (for now). As before, we use the <code>achmea.csv</code> that can be downloaded from <a href="https://raw.githubusercontent.com/vanatteveldt/learningr/master/achmea.csv">github</a>.</p>
-<pre class="r"><code>library(RTextTools)</code></pre>
-<pre><code>## Loading required package: SparseM
-## 
-## Attaching package: 'SparseM'
-## 
-## The following object is masked from 'package:base':
-## 
-##     backsolve</code></pre>
-<pre class="r"><code>d = read.csv(&quot;data/reviews.csv&quot;)
-ds = d[!is.na(d$SENTIMENT), ]
-m = create_matrix(ds$CONTENT, language=&quot;dutch&quot;, stemWords=F)</code></pre>
-<p>The next step is to create the RTextTools <em>container</em>. This contains both the d-t matrix and the manually coded classes, and you specify which parts to use for training and which for testing.</p>
-<p>To make sure that we get a random sample of documents for training and testing, we sample 80% of the set for training and the remainder for testing. (Note that it is important to sort the indices as otherwise GLMNET will fail)</p>
-<pre class="r"><code>n = nrow(m)
-train = sort(sample(1:n, n*.8))
-test = sort(setdiff(1:n, train))
-length(train)</code></pre>
-<pre><code>## [1] 4252</code></pre>
-<pre class="r"><code>length(test)</code></pre>
-<pre><code>## [1] 1063</code></pre>
-<p>Now, we are ready to create the container:</p>
-<pre class="r"><code>c = create_container(m, ds$SENTIMENT, trainSize=train, testSize=test, virgin=F)</code></pre>
-<p>Using this container, we can train different models:</p>
-<pre class="r"><code>SVM &lt;- train_model(c,&quot;SVM&quot;)
-MAXENT &lt;- train_model(c,&quot;MAXENT&quot;)
-GLMNET &lt;- train_model(c,&quot;GLMNET&quot;)</code></pre>
+<div id="uploading-tweets-to-amcat" class="section level1">
+<h1>Uploading tweets to AmCAT</h1>
+<p>By combining the twitter API and the AmCAT API we can upload tweets that match a given query directly to AmCAT.</p>
+<div id="installing-required-packages" class="section level2">
+<h2>Installing required packages</h2>
+<p>This howto uses the <a href="http://cran.r-project.org/web/packages/twitteR/index.html">twitteR</a> and <a href="http://github.com/amcat/amcat-r">amcatr</a> packages. The following code will load these packages, installing them if needed. You can skip the ‘install_github’ steps after the first time.</p>
+<pre class="r"><code>if (!require(&quot;twitteR&quot;)) {
+  library(devtools)
+  install_github(&quot;geoffjentry/twitteR&quot;)
+  library(&quot;twitteR&quot;)
+}</code></pre>
 </div>
-<div id="testing-model-performance" class="section level2">
-<h2>Testing model performance</h2>
-<p>Using the same container, we can classify the ‘test’ dataset</p>
-<pre class="r"><code>SVM_CLASSIFY &lt;- classify_model(c, SVM)
-MAXENT_CLASSIFY &lt;- classify_model(c, MAXENT)
-GLMNET_CLASSIFY &lt;- classify_model(c, GLMNET)</code></pre>
-<p>Let’s have a look at what these classifications yield:</p>
-<pre class="r"><code>head(SVM_CLASSIFY)</code></pre>
-<pre><code>##   SVM_LABEL  SVM_PROB
-## 1         1 0.9879011
-## 2         1 0.9716709
-## 3         1 0.8676882
-## 4         1 0.9970107
-## 5         1 0.6547546
-## 6        -1 0.6055967</code></pre>
-<pre class="r"><code>nrow(SVM_CLASSIFY)</code></pre>
-<pre><code>## [1] 1063</code></pre>
-<p>For each document in the test set, the predicted label and probability are given. We can compare these predictions to the correct classes manually:</p>
-<pre class="r"><code>t = table(SVM_CLASSIFY$SVM_LABEL, as.character(ds$SENTIMENT[test]))
-t</code></pre>
-<pre><code>##     
-##        1  -1
-##   1  563  83
-##   -1  77 340</code></pre>
-<p>(Note that the as.character cast is necessary to align the rows and columns) And compute the accuracy:</p>
-<pre class="r"><code>sum(diag(t)) / sum(t)</code></pre>
-<pre><code>## [1] 0.8494826</code></pre>
+<div id="connecting-to-twitter" class="section level2">
+<h2>Connecting to Twitter</h2>
+<p>First, you need to get a number of tokens (a kind of passwords) from twitter:</p>
+<ol style="list-style-type: decimal">
+<li>Sign in to twitter at <a href="http://twitter.com" class="uri">http://twitter.com</a></li>
+<li>Go to <a href="https://apps.twitter.com/" class="uri">https://apps.twitter.com/</a> and ‘create a new app’</li>
+<li>After filling in the required information, go to ‘keys and access tokens’</li>
+<li>Select ‘create access token’, and refresh</li>
+<li>Create variables with the consumer key, consumer secret, access token, and access token secret:</li>
+</ol>
+<pre class="r"><code>token = '...'
+token_secret = '...'
+consumer_key = &quot;...&quot;
+consumer_secret = &quot;...&quot;</code></pre>
+<p>Now you can connect using the setup_twitter_oauth function:</p>
+<pre class="r"><code>setup_twitter_oauth(consumer_key, consumer_secret, token, token_secret)</code></pre>
+<pre><code>## [1] &quot;Using direct authentication&quot;</code></pre>
 </div>
-<div id="analytics" class="section level2">
-<h2>Analytics</h2>
-<p>To make it easier to compute the relevant metrics, RTextTools has a built-in analytics function:</p>
-<pre class="r"><code>analytics &lt;- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
-names(attributes(analytics))</code></pre>
-<pre><code>## [1] &quot;label_summary&quot;     &quot;document_summary&quot;  &quot;algorithm_summary&quot;
-## [4] &quot;ensemble_summary&quot;  &quot;class&quot;</code></pre>
-<p>The <code>algorithm_summary</code> gives the performance of the various algorithms, with precision, recall, and f-score given per algorithm:</p>
-<pre class="r"><code>analytics@algorithm_summary</code></pre>
-<pre><code>##    SVM_PRECISION SVM_RECALL SVM_FSCORE GLMNET_PRECISION GLMNET_RECALL
-## -1          0.82       0.80       0.81             0.86          0.73
-## 1           0.87       0.88       0.87             0.84          0.92
-##    GLMNET_FSCORE MAXENTROPY_PRECISION MAXENTROPY_RECALL MAXENTROPY_FSCORE
-## -1          0.79                 0.71              0.82              0.76
-## 1           0.88                 0.87              0.78              0.82</code></pre>
-<p>The <code>label_summary</code> gives the performance per label (class):</p>
-<pre class="r"><code>analytics@label_summary</code></pre>
-<pre><code>##    NUM_MANUALLY_CODED NUM_CONSENSUS_CODED NUM_PROBABILITY_CODED
-## -1                423                 398                   452
-## 1                 640                 665                   611
-##    PCT_CONSENSUS_CODED PCT_PROBABILITY_CODED PCT_CORRECTLY_CODED_CONSENSUS
-## -1            94.08983             106.85579                      79.43262
-## 1            103.90625              95.46875                      90.31250
-##    PCT_CORRECTLY_CODED_PROBABILITY
-## -1                        80.14184
-## 1                         82.34375</code></pre>
-<p>Finally, the <code>ensemble_summary</code> gives an indication of how performance changes based on the amount of classifiers that agree on the classification:</p>
-<pre class="r"><code>analytics@ensemble_summary</code></pre>
-<pre><code>##        n-ENSEMBLE COVERAGE n-ENSEMBLE RECALL
-## n &gt;= 1                1.00              0.86
-## n &gt;= 2                1.00              0.86
-## n &gt;= 3                0.76              0.91</code></pre>
-<p>The last attribute, <code>document_summary</code>, contains the classifications of the various algorithms per document, and also lists how many agree and whether the consensus and the highest probability classifier where correct:</p>
-<pre class="r"><code>head(analytics@document_summary)</code></pre>
-<pre><code>##   SVM_LABEL  SVM_PROB GLMNET_LABEL GLMNET_PROB MAXENTROPY_LABEL
-## 1         1 0.9879011            1   0.9679683                1
-## 2         1 0.9716709            1   0.8655466                1
-## 3         1 0.8676882            1   0.7386093               -1
-## 4         1 0.9970107            1   0.9914546                1
-## 5         1 0.6547546            1   0.5559779                1
-## 6        -1 0.6055967            1   0.7343116                1
-##   MAXENTROPY_PROB MANUAL_CODE CONSENSUS_CODE CONSENSUS_AGREE
-## 1               1           1              1               3
-## 2               1           1              1               3
-## 3               1           1              1               2
-## 4               1           1              1               3
-## 5               1           1              1               3
-## 6               1           1              1               2
-##   CONSENSUS_INCORRECT PROBABILITY_CODE PROBABILITY_INCORRECT
-## 1                   0                1                     0
-## 2                   0                1                     0
-## 3                   0               -1                     1
-## 4                   0                1                     0
-## 5                   0                1                     0
-## 6                   0                1                     0</code></pre>
+<div id="searching-twitter" class="section level2">
+<h2>Searching twitter</h2>
+<p>Please see the documentation for the Twitter API and the twitteR package for all the possibilities of the API. As the following simple example shows, you can search for keywords and get a list or results</p>
+<pre class="r"><code>tweets = searchTwitteR(&quot;pvda&quot;, geocode=&quot;52.36656,4.90269,200km&quot;, resultType=&quot;recent&quot;)
+tweets[[1]]</code></pre>
+<pre><code>## [1] &quot;FionaBijl: RT @FloorBink: Of we koffie lusten ;) #intervisie #PvdA (@ Stadhuis Eindhoven in Eindhoven, Noord-Brabant) https://t.co/NxaGBDEcly http://t…&quot;</code></pre>
+<pre class="r"><code>class(tweets[[1]])</code></pre>
+<pre><code>## [1] &quot;status&quot;
+## attr(,&quot;package&quot;)
+## [1] &quot;twitteR&quot;</code></pre>
+<pre class="r"><code>tweets[[1]]$text</code></pre>
+<pre><code>## [1] &quot;RT @FloorBink: Of we koffie lusten ;) #intervisie #PvdA (@ Stadhuis Eindhoven in Eindhoven, Noord-Brabant) https://t.co/NxaGBDEcly http://t…&quot;</code></pre>
+<p>To make it easier to manipulate the tweets, we can convert them from a list of <code>status</code> objects to a data.frame, for which we use the <code>ldply</code> (list-dataframe-ply) function from the plyr package, taking advantage of the fact that <code>as.data.frame</code> works on a single status object:</p>
+<pre class="r"><code>library(plyr)</code></pre>
+<pre><code>## 
+## Attaching package: 'plyr'
+## 
+## The following object is masked from 'package:twitteR':
+## 
+##     id</code></pre>
+<pre class="r"><code>tweets = ldply(tweets, as.data.frame)
+names(tweets)</code></pre>
+<pre><code>##  [1] &quot;text&quot;          &quot;favorited&quot;     &quot;favoriteCount&quot; &quot;replyToSN&quot;    
+##  [5] &quot;created&quot;       &quot;truncated&quot;     &quot;replyToSID&quot;    &quot;id&quot;           
+##  [9] &quot;replyToUID&quot;    &quot;statusSource&quot;  &quot;screenName&quot;    &quot;retweetCount&quot; 
+## [13] &quot;isRetweet&quot;     &quot;retweeted&quot;     &quot;longitude&quot;     &quot;latitude&quot;</code></pre>
 </div>
-<div id="classifying-new-material" class="section level2">
-<h2>Classifying new material</h2>
-<p>New material (called ‘virgin data’ in RTextTools) can be coded by placing the old and new material in a single container. We now set all documents with a sentiment score as training material, and specify <code>virgin=T</code> to indicate that we don’t have coded classes on the test material:</p>
-<pre class="r"><code>m_full = create_matrix(d$CONTENT, language=&quot;dutch&quot;, stemWords=F)
-coded = which(!is.na(d$SENTIMENT))
-c_full = create_container(m_full, d$SENTIMENT, trainSize=coded, virgin=T)</code></pre>
-<p>We can now build and test the model as before:</p>
-<pre class="r"><code>SVM &lt;- train_model(c_full,&quot;SVM&quot;)
-MAXENT &lt;- train_model(c_full,&quot;MAXENT&quot;)
-GLMNET &lt;- train_model(c_full,&quot;GLMNET&quot;)
-SVM_CLASSIFY &lt;- classify_model(c_full, SVM)
-MAXENT_CLASSIFY &lt;- classify_model(c_full, MAXENT)
-GLMNET_CLASSIFY &lt;- classify_model(c_full, GLMNET)
-analytics &lt;- create_analytics(c_full, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
-names(attributes(analytics))</code></pre>
-<pre><code>## [1] &quot;label_summary&quot;    &quot;document_summary&quot; &quot;class&quot;</code></pre>
-<p>As you can see, the analytics now only has the <code>label_summary</code> and <code>document_summary</code>:</p>
-<pre class="r"><code>analytics@label_summary</code></pre>
-<pre><code>##    NUM_CONSENSUS_CODED NUM_PROBABILITY_CODED
-## -1                2072                  2214
-## 1                 3243                  3101</code></pre>
-<pre class="r"><code>head(analytics@document_summary)</code></pre>
-<pre><code>##   SVM_LABEL  SVM_PROB GLMNET_LABEL GLMNET_PROB MAXENTROPY_LABEL
-## 1         1 0.9434795            1   0.9753665                1
-## 2         1 0.8662337            1   0.8686021                1
-## 3         1 0.9789757            1   0.9694054                1
-## 4         1 0.9921145            1   0.9897091                1
-## 5         1 0.7618209            1   0.6671458                1
-## 6         1 0.9346809            1   0.8665783                1
-##   MAXENTROPY_PROB CONSENSUS_CODE CONSENSUS_AGREE PROBABILITY_CODE
-## 1       0.9997322              1               3                1
-## 2       1.0000000              1               3                1
-## 3       1.0000000              1               3                1
-## 4       1.0000000              1               3                1
-## 5       1.0000000              1               3                1
-## 6       1.0000000              1               3                1</code></pre>
-<p>The label summary now only contains an overview of how many where coded using consensus and probability. The document_summary lists the output of all algorithms, and the consensus and probability code.</p>
+<div id="uploading-tweets-to-amcat-1" class="section level2">
+<h2>Uploading tweets to AmCAT</h2>
+<p>Now we can directly upload these tweets to AmCAT using the <code>amcat.upload.articles</code> function.</p>
+<pre class="r"><code>library(&quot;amcatr&quot;)</code></pre>
+<pre><code>## Loading required package: rjson
+## Loading required package: RCurl
+## Loading required package: bitops
+## Loading required package: httr</code></pre>
+<pre class="r"><code>conn = amcat.connect(&quot;https://amcat.nl&quot;)
+project=1 # change this to your project ID
+set = amcat.upload.articles(conn, project=project, articleset=&quot;twitter test&quot;, medium=&quot;twitter&quot;,
+                           text=tweets$text, headline=tweets$text, 
+                           date=tweets$created, 
+                           author=tweets$screenName, addressee=tweets$replyToSN)</code></pre>
+<pre><code>## Created articleset 21996: twitter test in project 1
+## Uploading 25 articles to set 21996</code></pre>
+<p>Now we can inspect our articleset on the AmCAT web site, or do a query from r, e.g.:</p>
+<pre class="r"><code>amcat.hits(conn, sets=set, queries=&quot;vvd&quot;)</code></pre>
+<pre><code>## GET https://amcat.nl/api/v4/search?q=count%23vvd&amp;col=hits&amp;sets=21996&amp;minimal=TRUE&amp;page_size=1000&amp;format=csv&amp;page=1</code></pre>
+<pre><code>## Warning in amcat.hits(conn, sets = set, queries = &quot;vvd&quot;): Query vvd
+## produced no results</code></pre>
+<pre><code>## NULL</code></pre>
 </div>
 </div>
 

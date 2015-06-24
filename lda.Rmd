@@ -1,69 +1,72 @@
-Topic Modeling
--------
+```{r, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.path = "figures_lda/")
+```
 
-Topics can be seen as groups of words that cluster together.
-Similar to factor analysis, topic modeling reduces the dimensionality of the feature space (the term-document matrix)
-assuming that the latent factors (the topics) will correspond to meaningful latent classes (e.g. issues, frames).
-We can use the document-term matrix from the `sotu` dataset in `topicbrowser`, which contains the the nouns, names and adjectives from Bush' and Obama's State of the Union addresses. 
-With this dtm, a topic model can be trained using the `LDA` function  from the `topicmodels` package.
-We specify that we want to use the Gibbs sampler with 200 iterations.
+Latent Dirichlet Allocation
+========================================================
+
+Topic modelling techniques such as Latent Dirichlet Allocation (LDA) can be a usefull tool for social scientists to analyze large amounts of natural language data. Algorithms for LDA are available in R, for instance in the `topicmodels` package. In this howto we demonstrate several function in the `corpustools` package that facilitate the use of LDA using the `topicmodels` package.
+
+As a starting point we use a Document Term Matrix (dtm) in the `DocumentTermMatrix` format offered in the `tm` package. Note that we also offer a howto for creating the dtm. 
 
 ```{r}
-library(topicbrowser)
-library(topicmodels)
-library(tm)
-data(sotu)
-sotu.dtm = weightTf(sotu.dtm)
+library(corpustools)
+data(sotu) # state of the union speeches by Barack Obama and George H. Bush.
+head(sotu.tokens)
+dtm = dtm.create(documents=sotu.tokens$aid, terms=sotu.tokens$lemma, filter=sotu.tokens$pos1 %in%  c('N','M','A'))
+dtm
+```
+
+Not all terms are equally informative of the underlying semantic structures of texts, and some terms are rather useless for this purpose. For interpretation and computational purposes it is worthwhile to delete some of the less usefull words from the dtm before fitting the LDA model.  As seen from the red message lines above, the dtm.create automatically uses some filtering of terms, but it can be good to customize this for your research.
+
+Now we are ready to fit the model! We made a wrapper called `lda.fit` for the `LDA` function in the `topicmodels` package. This wrapper doesn't do anything interesting, except for deleting empty columns/rows from the dtm, which can occur after filtering out words. 
+
+The main input for `topmod.lda.fit` is:
+- the document term matrix
+- K: the number of topics (this has to be defined a priori)
+- Optionally, it can be usefull to increase the number of iterations. This takes more time, but increases performance.
+
+```{r}
 set.seed(12345)
-m = LDA(sotu.dtm, k = 10, method="Gibbs", control=list(iter=200))
+m = lda.fit(dtm, K=20, num.iterations=1000)
+terms(m, 10)[,1:5] # show first 5 topics, with ten top words per topic
 ```
 
-Note that set.seed makes sure that if the function is run again, you get the same results
-(which would normally not be the case since LDA is non-deterministic).
+We now have a fitted lda model. The `terms` function shows the most prominent words for each topic (we only selected the first 5 topics for convenience). 
 
-The resulting LDA model `m` can be inspected and plotted in a variety of ways,
-the simplist of which is listing the most important words per topic using `terms`:
+One of the thing we can do with the LDA topics, is analyze how much attention they get over time, and how much they are used by different sources (e.g., people, newspapers, organizations). To do so, we need to match this article metadata. We can order the metadata to the documents in the LDA model by matching it to the documents slot.
 
 ```{r}
-terms(m, 10)
+head(sotu.meta)
+meta = sotu.meta[match(m@documents, sotu.meta$id),]
 ```
 
-Although interpreting topics on the top words alone is always iffy, it seems that most of the topics have a distinct meaning.
-Dot example, topic 10 seems to be about health care, while topic 8 deals with war and security.
+We can now do some plotting. First, we can make a wordcloud for a more fancy (and actually quite informative and intuitive) representation of the top words of a topic.
 
-The package `topicbrowser` contains a number of useful functions for plotting topics and listing the top documents per topic.
-Let's plot the word ckoud for topic 8:
+```{r, message=F, warning=FALSE, fig.width=6, fig.height=6}
+lda.plot.wordcloud(m, topic_nr=1)
+lda.plot.wordcloud(m, topic_nr=2)
+```
+
+With `lda.plot.time` and `lda.plot.category`, we can plot the salience of the topic over time and for a given categorical variable.
 
 ```{r}
-plot_wordcloud(m, topic_nr=8)
+lda.plot.time(m, 1, meta$date, date_interval='year')
+lda.plot.category(m, 1, meta$headline)
 ```
 
-To make richer visualizations, we combine the LDA model with the original tokens and the metadata into a 'clusterinfo' object:
+It can be usefull to print all this information together. That is what the following function does.
+
+```{r, message=F, warning=FALSE, fig.width=10, fig.height=10}
+lda.plot.topic(m, 1, meta$date, meta$headline, date_interval='year')
+lda.plot.topic(m, 2, meta$date, meta$headline, date_interval='year')
+```
+
+For further substantive analysis, we can also create a data frame containing the topic proportion for each document:
 
 ```{r}
-info = clusterinfo(m, sotu.tokens$lemma, sotu.tokens$aid, words=sotu.tokens$word, meta=sotu.meta)
-```
-
-We can use this to e.g. add topic use over time to the graph:
-
-```{r, warning=FALSE}
-plot_wordcloud_time(clusterinfo=info, topic_nr=8, time_interval="year")
-```
-
-And to create a network visualization rather than a normal word cloud:
-
-```{r}
-plot_semnet(clusterinfo=info, topic_nr=10)
-```
-
-Finally, we can create a 'topic browser' HTML page which contains an overview of all topics. See e.g. the example at [rpubs](http://rpubs.com/Anoniem/72883)
-
-```{r, eval=FALSE}
-createTopicBrowser(info)
-```
-
-We can also include the 'semantic network' topic representations by including that in the per-topic plot functions:
-
-```{r, eval=FALSE}
-createTopicBrowser(info, plotfunction.pertopic=c(plot_wordcloud_time, plot_semnet))
+docs = topics.per.document(m)
+docs = merge(meta, docs)
+head(docs)
 ```
