@@ -267,6 +267,16 @@ dtm.wordcloud(eu.il.verbs.dtm, nterms=50, freq.fun=sqrt)
 
 So, the US defends, supports, and stands (by) Israel, while the EU calls, meets, pleads, urges and condemns them.
 
+Finally, let's see what Israel are doing to Palestinians:
+
+```{r, warning=FALSE}
+il.ps.clauses = edges$clause_id[edges$actor.x == "israel" & edges$actor.y == "palest"]
+il.ps.verbs = t3[!is.na(t3$clause_id) & t3$clause_id %in% il.ps.clauses & t3$pos1 == "V" & !(t3$lemma %in% c("have", "be", "do", "will")), ]
+il.ps.verbs.dtm = dtm.create(il.ps.verbs$aid, il.ps.verbs$lemma)
+dtm.wordcloud(il.ps.verbs.dtm, nterms=50, freq.fun=sqrt)
+```
+
+
 Obviously, even though this is quite interesting already, this is the start of a proper semantic network analysis rather than the end.
 an obvious extension would be to systematically analyse different possible actions, e.g. using topic models or some sort of event dictionary. 
 Of course, it would also be interesting to compare the semantic network from different countries or according to different sources, etc.
