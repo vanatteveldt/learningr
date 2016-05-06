@@ -135,7 +135,7 @@ head(sotu.tokens, n=20)
 ```
 
 As you can see, the result is similar to the ad-hoc lemmatized tokens, but now we have around 100 thousand tokens rather than 6.
-We can create a document-term matrix using the dtm.create command from `corputools`:
+We can create a document-term matrix using the dtm.create command from `corpustools`:
 
 ```{r, warning=FALSE}
 library(corpustools)
