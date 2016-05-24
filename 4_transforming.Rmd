@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 ```{r, echo=FALSE}
 cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
 ```
