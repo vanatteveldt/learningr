@@ -1,0 +1,156 @@
+---
+title: "Basic Visualization"
+author: "Wouter van Atteveldt"
+date: "May 25, 2016"
+output: pdf_document
+---
+
+# Plotting with base plot function
+
+```{r}
+load("data/capital.rdata")
+capital = na.omit(capital)
+head(capital)
+```
+
+We can use `plot` to make a scatter plot of public to private capital, using colour to indicate country.
+We can also use abline to add a straight line (at y=0) and a linear fit to the plot:
+
+```{r, fig.height=4.5}
+col = rainbow(length(levels(capital$Country)))
+plot(capital$Private, capital$Public, col=col[as.numeric(capital$Country)], frame.plot = F, xlim=c(1,10))
+legend("topright", legend=levels(capital$Country), col = col, pch = 1)
+abline(h = 0, lty=2)
+abline(lm(capital$Public ~ capital$Private))
+```
+
+To see scatter plots of all country x country values for e.g. private capital, we first cast the data 
+to wide format (to get the countries side-by-side) and then plot the data frame, taking only the columns we need:
+
+```{r}
+library(reshape2)
+wide = dcast(capital, Year ~ Country, value.var="Private")
+plot(wide[2:5])
+```
+
+\newpage
+
+## Histograms
+
+We can also take a histogram of the distrubution of income:
+
+```{r}
+d = na.omit(read.csv("data/income_topdecile.csv"))
+d = melt(d, id.var="Year")
+head(d)
+```
+
+Plot the histogram using hist, specifying the amount of bins with `breaks`:
+
+```{r}
+hist(d$value, breaks = 20)
+```
+
+You can also add a simulated normal value by using the `dnorm` function to calculate density based on mean and sd:
+
+```{r}
+h = hist(d$value, breaks = 20)
+x = seq(min(d$value), max(d$value), length.out=100)
+norm = dnorm(x, mean(d$value), sd(d$value))
+scale = max(h$counts / h$density, na.rm=T)
+lines(x, norm * scale, col="red", lwd=2)
+```
+
+So it seems that the value is not normally distributed, which is confirmed by a Shapiro-Wilk text:
+
+```{r}
+shapiro.test(d$value)
+```
+
+# Plotting with ggplot2
+
+`ggplot2` is an advanced package for making graphs of all kinds. See [http://www.r-graph-gallery.com/portfolio/ggplot2-package/](http://www.r-graph-gallery.com/portfolio/ggplot2-package/) for a gallery of plots with associated R code.
+
+In ggplot, a graph is composed of layers, which have an aesthetic mapping of data to visual properties, and geometries (lines, points, etc). 
+
+## Scatter plots and regression lines
+
+As a simple example, lets reproduce the scatter plot made above:
+
+```{r}
+library(ggplot2)
+ggplot(capital, aes(x=Private, y=Public)) + geom_point()
+```
+
+If we want to add a regresssion line, that would be another layer, in this case a line.
+Note that we need to change the mapping since y should now point to the fitted values of the model.
+We don't need to specify data and x again as these are taken from the base ggplot.
+
+
+```{r, fig.keep="none"}
+m = lm(Public ~ Private, data=capital)
+regline =  geom_line(mapping=aes(y=fitted(m)))
+ggplot(capital, aes(x=Private, y=Public)) + geom_point() + regline
+```
+
+(output not shown to save trees)
+
+Now let's add a confidence interval band by using the predict function to get the interval.
+Note that we use `as.data.frame` to convert the predict output (a matrix) to a data.frame so the `$` works.
+
+```{r, fig.keep="none"}
+fit = as.data.frame(predict(m, interval = "confidence"))
+band = geom_ribbon(mapping=aes(ymin=fit$lwr, ymax=fit$upr), alpha=.3)
+ggplot(capital, aes(x=Private, y=Public)) + geom_point() + regline + band
+```
+
+(output not shown to save trees)
+
+This can be done even more easily by using the `smooth` geom, which automatically adds a regression line and confidence interval. 
+Moreover, we can use the `color` aesthetics to get points color per country: 
+
+```{r}
+ggplot(capital, aes(x=Private, y=Public)) + 
+  geom_point(mapping=aes( color=Country)) + geom_smooth(method='lm')
+```
+
+\newpage
+
+## Line plots
+
+We can ues the geom_line to create a simple line plot, e.g. for the development of French private wealth:
+
+```{r}
+d = subset(capital, Country=="France")
+ggplot(d, aes(x=Year, y=Private)) + geom_line() + ggtitle("Private Wealth in France")
+```
+
+\newpage
+
+You can make a line plot with multiple lines by specifying the color mapping:
+
+```{r}
+ggplot(capital, aes(x=Year, y=Private, color=Country)) + geom_line()
+```
+
+\newpage
+
+Finally, we can use 'faceting' to automatically create a plot per country:
+
+```{r}
+ggplot(capital, aes(x=Year, y=Private)) + geom_line() + facet_wrap(~Country)
+```
+
+
+
+# GoogleVis 
+
+Google has an online API for creating interactive graphs that can be included in HTML reports/presentations or on webpages.
+
+```{r, eval=F}
+library(googleVis)
+wide = dcast(capital, Year ~ Country, value.var = "Private")
+plot(gvisLineChart(wide, xvar = "Year", yvar = colnames(wide)[-1]))
+```
+
+(run code interactively to see results)
