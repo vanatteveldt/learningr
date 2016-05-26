@@ -26,7 +26,7 @@ On every computer you need to save your AmCAT password once (if you don't have a
 library(amcatr)
 amcat.save.password("https://amcat.nl", "your_username", "your_password")
 ```
-```{r, echo=F}
+```{r, echo=F, message=F}
 library(amcatr)
 ```
 
@@ -60,410 +60,152 @@ library(ggplot2)
 ggplot(perweek, aes(x=week, y=count, color=medium)) + geom_line()
 ```
 
-W
-# Good, the AmCAT interface but *more* complicated. What more could I want? :-)
 
-# Corpus analysis: the bag of words aka document-term matrix
+# Corpus analysis: document-term matrix
 
+The main primitive in corpus analysis is the document-term matrix. 
+We can create one from text using the `create_matrix` function in `RTextTools`
+
+```{r, message=F}
 library(RTextTools)
 input = data.frame(text=c("Chickens are birds", "The bird eats"))
 m = create_matrix(input$text, removeStopwords=F)
-
 as.matrix(m)
+```
 
+Note that a DTM is normally a sparse matrix, which means only the non-zero values are stored.
+In a real world matrix, you easily have millions of cells, so converting it to a regular matrix with `as.matrix` can cause memory problems.
+
+Let's try to clean some of the noise from the data set:
+
+```{r}
 m = create_matrix(input$text, removeStopwords=T, stemWords=T, language='english')
-dim(m)
 as.matrix(m)
-colSums(as.matrix(m))
+```
 
+So for English this works reasonably well. 
+Now let's try for Dutch:
+
+```{r}
 text = c("De kip eet", "De kippen hebben gegeten")
 m = create_matrix(text, removeStopwords=T, stemWords=T, language="dutch")
 colSums(as.matrix(m))
+```
 
-# Enter AmCAT - getting 'tokens'
+## Tokens and NLP Preprocessing
 
+The `amcat.gettokens` command allows us to get document word lists from AmCAT:
+
+```{r, message=F}
 tokens = amcat.gettokens(conn, 1006, 25173, page_size=100, max_page=2)
-saveRDS(tokens, "tokens_elastic.rds")
-
 head(tokens)
+```
+
+We can create a DTM (and a word cloud) from this:
+
+```{r, message=F}
 library(corpustools)
 dtm = dtm.create(tokens$aid, tokens$term)
-
 dtm.wordcloud(dtm)
+```
 
-# Well that didn't help, now did it. We need need preprocessing!
+But that's still no good: we need some preprocessing:
 
+```{r, message=F}
 tokens = amcat.gettokens(conn, 1006, 25173, module="morphosyntactic", page_size=100, max_page=1, only_cached=T)
-
-# saveRDS(tokens, "~/oekref16/data/tokens.rds")
-tokens = readRDS("~/oekref16/data/tokens.rds")
-
 head(tokens)
+```
 
-# create dtm from (subset of) tokens 
-library(corpustools)
+So you can see this lemmatizes (stems) words and gives their part of speech (noun, verb, etc.)
+Let's plot only the names:
+
+```{r, message=F}
 subset = tokens[tokens$pos == "name", ]
 dtm = dtm.create(subset$aid, subset$lemma)
-
-as.matrix(dtm)[1:10, 1:10]
-
 dtm.wordcloud(dtm, nterms = 200)
+```
 
+# Corpus analysis: The State-of-the-Unions
 
+We've prepared a data set containing state of the union speeches by Obama and Bush:
 
-
-
-# Case 1: State-of-the-Union
-
+```{r}
 data(sotu)
 head(sotu.tokens)
 aggregate(cbind(Freq=sotu.meta$id), list(Speaker=sotu.meta$headline), length)
+```
 
-# Contrast: Bush vs Obama
+We can easily get the most frequent terms with the `term.statistics` function:
 
+```{r, message=F}
+dtm = dtm.create(sotu.tokens$aid, sotu.tokens$lemma)
+stats = term.statistics(dtm)
+stats = arrange(stats, -termfreq)
+head(stats)
+```
+
+
+Let's limit that to adjectives:
+
+```{r, message=F}
+dtm = with(subset(sotu.tokens, pos1 == "A"), dtm.create(aid, lemma))
+stats = term.statistics(dtm)
+stats = arrange(stats, -termfreq)
+head(stats)
+```
+
+## Comparing corpora
+
+It is often more informative to compare two corpora, e.g. compare Bush' words to Obama's words:
+
+```{r}
 dtm = with(sotu.tokens[sotu.tokens$pos1 %in% c("N", "A", "M"), ],
            dtm.create(aid, lemma))
 obama = sotu.meta$id[sotu.meta$headline == "Barack Obama"]
 cmp  = corpora.compare(dtm, select.rows = obama)
+cmp = arrange(cmp, over)
+head(cmp)
+```
+
+So, words like terror and freedom are mostly used by Bush (their overrepresentation for Obama is below 1).
+
+We can also plot these words with a 'directed' word cloud:
+
+```{r}
 h = rescale(log(cmp$over), c(1, .6666))
 s = rescale(sqrt(cmp$chi), c(.25,1))
 cmp$col = hsv(h, s, .33 + .67*s)
+with(head(cmp, 130), plotWords(x=log(over), words=term, 
+    wordfreq=termfreq, random.y = T, col=col, scale=1))
+```
 
-head(cmp)
-with(head(cmp, 130), plotWords(x=log(over), words=term, wordfreq=termfreq, random.y = T, col=col, scale=2))
+## Topic Modeling
 
+A final example of corpus analysis is topic modeling.
+In topic modeling, words are automatically assigned to clusters (similar to factor analysis):
 
-wordfreqs = dtm.to.df(dtm)
-wordfreqs = merge(sotu.meta, wordfreqs, by.x="id", by.y="doc")
-mmode <- function(v) {uniqv <- unique(v); uniqv[which.max(tabulate(match(v, uniqv)))]}
-dates = aggregate(wordfreqs["date"], by=wordfreqs["term"], FUN=mmode)
-cmp = arrange(merge(cmp, dates), -termfreq)
-with(head(cmp, 100), plotWords(x=date, words=term, wordfreq=termfreq, random.y = T, col=col, scale=2))
-
-# Okay, that was fun
-# Now let's have a look at topic modeling
-
-# Visualizing word clusters
-
+```{r}
 set.seed(123)
 m = lda.fit(dtm, K=10, alpha=.1)
-topics = c("War", "People", "Energy", "Education", "Tax", "Reform", "Freedom", "Terrorism", "Jobs", "Health")
-x = terms(m, 10)
-colnames(x) = topics
-head(x)
+terms(m, 10)
+```
 
-# Merge topic and word information
+We can see how often each topic occurs in each document:
 
-w = m@wordassignments
-colnames(w) = m@terms
-mostfrequent = function(x) {t = names(sort(table(x[x!=0]), decreasing = T)[1]); if(is.null(t)) 0 else t}
-word.topics = apply(w, MARGIN = 2, FUN = mostfrequent)
-cmp$topic = as.numeric(word.topics[as.character(cmp$term)])
-cmp$topic.name = factor(cmp$topic, labels = topics)
-cols = sample(substr(rainbow(length(topics), s=0.6,alpha=0.5), 1,7))
-cmp$topic.col = cols[cmp$topic]
-head(cmp)
+```{r}
+tpd = topics.per.document(m, as.wordassignments = T)
+head(tpd)
+```
 
-# Topics over time
+And merge this back with the meta information
 
-with(head(cmp, 100), plotWords(date, topic, words=as.character(term), wordfreq = termfreq, col=topic.col, scale=2))
+```{r}
+tpd = merge(sotu.meta, tpd)
+head(tpd)
+```
 
-# Topic overlap
+And use this to e.g. figure out whether a topic like Iraq (topic 1) is mostly affiliated with which president:
 
-cm = cor(t(m@beta))
-colnames(cm) = rownames(cm) = topics
-diag(cm) = 0
-heatmap(cm, symm = T)
-
-# View topic overlap
-
-compare.topics <- function(m, cmp_topics) {
-  assignments = dtm.to.df(m@wordassignments, term_labels=m@terms, doc_labels=m@documents)
-  terms = dcast(assignments, term ~ freq, value.var = "doc", fun.aggregate = length)
-  terms = terms[, c(1, cmp_topics+1)]
-  terms$freq = rowSums(terms[-1])
-  terms = terms[terms$freq > 0,]
-  terms$prop = terms[[2]] / terms$freq
-  terms$col = hsv(rescale(terms$prop, c(1, .6666)), .5, .5)
-  terms$nn = rowSums(terms[2:3]>0)
-  terms[order(-terms$freq), ]
-}
-
-# Topic overlap: War and Peace
-
-set.seed(123)
-terms = compare.topics(m, match(c("Freedom", "War"), topics))
-terms = compare.topics(m, match(c("Reform", "Tax"), topics))
-with(head(terms, 100), plotWords(x=prop, wordfreq = freq, words = term, col=col, xaxt="none", random.y = T, scale=2))
-
-# Topic overlap: Who is speaking?
-
-terms$col.speaker = cmp$col[match(terms$term, cmp$term)]
-with(head(terms, 100), plotWords(x=prop, wordfreq = freq, words = term, col=col.speaker, xaxt="none", random.y = T, scale=2))
-
-# Topic overlap: three topics
-compare.topics3 <- function(m, cmp_topics) {
-  assignments = dtm.to.df(m@wordassignments, term_labels=m@terms, doc_labels=m@documents)
-  terms = dcast(assignments, term ~ freq, value.var = "doc", fun.aggregate = length)
-  terms = terms[,c(1, cmp_topics+1)] # 'term is 1
-  colnames(terms)[-1] = c("x", "y", "z")
-  terms$freq = rowSums(terms[-1])
-  terms = terms[terms$freq>0, ]
-  terms$prop.x = terms$x / terms$freq
-  terms$prop.y = terms$y / terms$freq
-  terms$prop.z = terms$z / terms$freq
-  tern = ggtern::tlr2xy(terms[c("x", "y", "z")], ggtern::coord_tern())
-  terms$tx = tern$x
-  terms$ty = tern$y
-  terms$col = with(terms, rgb(x/freq, y/freq, z/freq))
-  terms$nn = rowSums(terms[c("x","y","z")] > 0)
-  terms[order(-terms$freq), ]
-}
-
-
-# Topic overlap: Health, Reform, and Tax
-
-terms = compare.topics3(m, match(c("Tax", "Reform", "Health"), topics))
-with(head(terms, 75), plotWords(tx, ty, term, freq, col=col, xaxt="none", scale=2))
-
-# Who wants reform?
-
-terms$col.speaker = cmp$col[match(terms$term, cmp$term)]
-with(head(terms, 75), plotWords(tx, ty, term, freq, col=col.speaker, xaxt="none", scale=2))
-
-
-# Educating the people about terrorism?
-
-terms = compare.topics3(m, match(c("Terrorism", "Education", "People"), topics))
-with(head(terms, 75), plotWords(tx, ty, term, freq, col=col, xaxt="none", scale=2))
-terms$col.speaker = cmp$col[match(terms$term, cmp$term)]
-with(head(terms, 75), plotWords(tx, ty, term, freq, col=col.speaker, xaxt="none", scale=2))
-
-
-# Semantic Network Analysis
-
-library(semnet)
-g = with(sotu.tokens[sotu.tokens$pos1 %in% c("N", "M", "A"), ],
-         windowedCoOccurenceNetwork(location = id, term = lemma, context = aid, window.size = 20))
-head(get.data.frame(g, "edges"))
-
-gb = getBackboneNetwork(g, alpha = 1e-03, max.vertices = 75)
-gb = decompose.graph(gb, min.vertices = 5, max.comps = 1)[[1]]
-V(gb)$cluster = edge.betweenness.community(gb)$membership
-gb = setNetworkAttributes(gb, size_attribute = V(gb)$freq, cluster_attribute = V(gb)$cluster)
-plot(gb)
-
-
-# Semantic Networks: color by speaker
-
-V(gb)$frame.color = V(gb)$color  = cmp$col[match(V(gb)$name, cmp$term)]
-plot(gb)
-
-# Semantic Networks: color by LDA topic
-
-V(gb)$frame.color = V(gb)$color  = cmp$topic.col[match(V(gb)$name, cmp$term)]
-plot(gb)
-
-# Semantic Networks: contrasts
-
-g.bush = with(sotu.tokens[sotu.tokens$pos1 %in% c("N", "M", "A") & sotu.tokens$aid %in% sotu.meta$id[sotu.meta$headline == "George W. Bush"], ],
-              windowedCoOccurenceNetwork(location = id, term = lemma, context = aid, window.size = 20))
-g.obama = with(sotu.tokens[sotu.tokens$pos1 %in% c("N", "M", "A") & sotu.tokens$aid %in% sotu.meta$id[sotu.meta$headline == "Barack Obama"], ],
-               windowedCoOccurenceNetwork(location = id, term = lemma, context = aid, window.size = 20))
-d.obama = get.data.frame(g.obama, what=c("edges"))
-d.bush = get.data.frame(g.bush, what=c("edges"))
-d =merge(d.obama, d.bush, by=c("from", "to"), all=T)
-d[is.na(d)] = 0
-do = d[d$weight.x > d$weight.y, ]
-colnames(do)[3] = "weight"
-g.obama = graph.data.frame(do, vertices = get.data.frame(g.obama, "vertices"))
-db = d[d$weight.x < d$weight.y, ]
-colnames(db)[4] = "weight"
-g.bush = graph.data.frame(db, vertices = get.data.frame(g.bush, "vertices"))
-
-
-# Semantic Networks: contrasts
-
-for (g in list(g.obama, g.bush)) {
-  g = getBackboneNetwork(g, alpha = 1e-03, max.vertices = 75)
-  g = decompose.graph(g, min.vertices = 5, max.comps = 1)[[1]]
-  V(g)$cluster = edge.betweenness.community(g)$membership
-  g = setNetworkAttributes(g, size_attribute = V(g)$freq, cluster_attribute = V(g)$cluster)
-  plot(g)
-}
-
-# Semantic Networks: contrasts
-
-for (g in list(g.obama, g.bush)) {
-  g = getBackboneNetwork(g, alpha = 1e-03, max.vertices = 75)
-  g = decompose.graph(g, min.vertices = 5, max.comps = 1)[[1]]
-  V(g)$cluster = edge.betweenness.community(g)$membership
-  g = setNetworkAttributes(g, size_attribute = V(g)$freq, cluster_attribute = V(g)$cluster)
-  plot(g)
-}
-
-## Can we go one step further?  --> Syntactic analysis for clause analysis
-## Sentence -> (source, subject, predicate) triples
-
-library(rsyntax)
-data(example_tokens_dutchquotes)
-
-tokens = tokens[tokens$sentence == 4,]
-
-get_text(tokens)
-plot(graph_from_sentence(tokens))
-
-q = get_quotes_nl(tokens)
-cl = get_clauses_nl(tokens)
-
-
-
-plot(graph_from_sentence(tokens, quotes = q, clauses = cl))
-
-# Case 2: Gaza war
-rm(list = ls())
-
-setwd("~/Dropbox/papers/2015_clauses/clauses_analyses")
-load("quotes_clauses.rda")
-load("tokens.rda")
-
-head(tokens)
-head(clauses)
-
-src_actor = unique(quotes[quotes$actor != "" & quotes$quote_role == "source", c("quote_id", "actor")])
-nn = table(src_actor$quote_id)
-src_actor = subset(src_actor, !(quote_id %in% names(nn[nn>1])))
-
-quote_src = quotes[quotes$quote_role== "quote", c('quote_id', 'id')]
-quote_src = merge(quote_src, src_actor)
-quote_src = data.frame(id=quote_src$id, source=quote_src$actor)
-
-clauses = merge(clauses, quote_src, all.x=T)
-clauses = merge(clauses, tokens[c("id", "lemma", "pos1")])
-
-agcl = unique(clauses$clause_id[clauses$attack])
-
-
-
-# (1) Who is quoted?
-
-x = unique(clauses[ c("clause_id", "country", "source")])
-x = unique(clauses[!is.na(clauses$source), c("clause_id", "country", "source")])
-
-nn = table(x$country,  x$source)
-nn
-nn[,2] / nn[,1]
-chisq.test(nn)
-
-x = unique(clauses[!is.na(clauses$source) & (clauses$clause_id %in% agcl), c("clause_id", "country", "source")])
-
-nn = table(x$country,  x$source)
-nn
-nn[,2] / nn[,1]
-chisq.test(nn)
-
-# (2) Who is aggressor / victim
-
-acl = unique(clauses[clauses$actor != "" & clauses$clause_id %in% agcl, c("clause_id", "clause_role", "country", "actor")])
-
-head(acl)
-
-nn.us = with(subset(acl, country=="us"), table(actor, clause_role))
-nn.us / rowSums(nn.us)
-
-nn.cn = with(subset(acl, country=="cn"), table(actor, clause_role))
-nn.cn / rowSums(nn.cn)
-
-
-with(subset(acl, actor=="Israel"), chisq.test(country, clause_role))
-with(subset(acl, actor=="Hamas"), chisq.test(country, clause_role))
-
-chisq.test(nn)
-
-# (3) What do they do?
-
-stopwords = read.csv("stop-word-list.csv", header =F, stringsAsFactors=F)[[1]]
-# dtm of predicates
-
-p = subset(clauses, clause_role == "predicate" & pos1 %in% c('V','N','M','A') & lemma %notin% stopwords)
-
-library(corpustools)
-library(semnet)
-
-predicates = dtm.create(p$clause_id, p$lemma, filter.chars = F, minlength = 2)
-
-#verbs = with(tokens[which(tokens$clause_role == "predicate"),],  dtm.create(clause_id, lemma, filter = pos1 == 'V' & lemma %notin% stopwords))
-
-# what do hamas/israel do according to china / israel
-
-cusa = unique(clauses$clause_id[clauses$country == "us"])
-cchina = unique(clauses$clause_id[clauses$country == "cn"])
-
-sh = unique(clauses$clause_id[clauses$clause_role=="subject" & clauses$actor == "Hamas"])
-si = unique(clauses$clause_id[clauses$clause_role=="subject" & clauses$actor == "Israel"])
-
-c(length(intersect(cusa, si)), length(intersect(cchina, si)), length(intersect(cusa, sh)), length(intersect(cchina, sh)))
-
-source("functions.r")
-plot.cooc.from.dtm(predicates, intersect(cusa, si), intersect(cchina, si), main="Country:US, Subject:Israel")
-plot.cooc.from.dtm(predicates, intersect(cchina, si), intersect(cusa, si), main="Country:China, Subject:Israel")
-
-plot.cooc.from.dtm(predicates, intersect(cusa, sh), intersect(cchina, sh), main="Country:US, Subject:Hamas")
-plot.cooc.from.dtm(predicates, intersect(cchina, sh), intersect(cusa, sh), main="Country:China, Subject:Hamas")
-
-
-# (6) Who talks about whom?
-
-head(quotes)
-entities = get.entities(tokens)
-qnames = na.omit(merge(quotes, subset(entities, name == "Israel" | type %in% c("ORGANIZATION", "PERSON")))[c("country", "quote_id", "quote_role", "name")])
-
-srcs = qnames[qnames$quote_role == "source", c("country", "quote_id", "name")]
-qts = qnames[qnames$quote_role == "quote", c("country", "quote_id", "name")]
-
-###
-
-head(srcs)
-cmp = dcast(srcs, name ~ country, fun.aggregate = length, value.var="quote_id")
-smooth = .000001
-cmp$relcn = cmp$cn / sum(cmp$cn)
-cmp$relus = cmp$us / sum(cmp$us)
-head(x)
-cmp$overus = (cmp$relus + smooth) / (cmp$relcn + smooth)
-cmp$chi = with(cmp, corpustools:::chi2(us, cn, sum(us) - us, sum(cn) - cn))
-subset(cmp, name == "Hamas")
-###
-
-x = merge(srcs, qts, by=c("quote_id", "country"))
-x = aggregate(list(n=x$quote_id), by=x[c("name.x", "name.y", "country")], FUN=function(x) length(unique(x)))
-table(x$country)
-
-#g.cn = graph.data.frame(subset(x, n>=1 & country == "cn"), directed = T)
-#V(g.cn)$weight = table(qnames$name[qnames$country == "cn"])[get.vertex.attribute(g.cn, "name")]
-
-g.cn = graph.data.frame(subset(x, n>=1 & country == "cn" & (name.x %in% cmp$name[cmp$overus < 1]  |name.y %in% cmp$name[cmp$overus < 1])), directed = T)
-V(g.cn)$weight = cmp$chi[match(get.vertex.attribute(g.cn, "name"), cmp$name)]
-g.cn = graph.settings(g.cn, backbone=T)
-V(g.cn)$shape = "none"
-plot(g.cn, main="Quote network China")
-
-#g.us = graph.data.frame(subset(x, n>=1 & country == "us"), directed = T)
-#V(g.us)$weight = table(qnames$name[qnames$country == "us"])[get.vertex.attribute(g.us, "name")]
-
-
-g.us = graph.data.frame(subset(x, country == "us" & (name.x %in% cmp$name[cmp$overus > 1] | name.y %in% cmp$name[cmp$overus > 1])), directed = T)
-V(g.us)$weight = cmp$chi[match(get.vertex.attribute(g.us, "name"), cmp$name)]
-V(g.us)$weight[is.na(V(g.us)$weight)] = 0.01
-g.us = graph.settings(g.us, backbone=T)
-V(g.us)$shape = "none"
-plot(g.us, main="Quote network US")
- @vanatteveldt
-           
-Write  Preview
-
-Leave a comment
-Attach files by dragging & dropping,  Choose Files selecting them, or pasting from the clipboard.
- Styling with Markdown is supported
-Comment
-Status API Training Shop Blog About
-© 2016 GitHub, Inc. Terms Privacy Security Contact Help
+```{r}
+t.test(tpd$X1 ~ tpd$headline)
+```
