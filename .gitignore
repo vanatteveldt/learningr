@@ -9,3 +9,4 @@
 *.rdata
 *.png
 .httr-oauth
+api_auth.rda

@@ -1,0 +1,229 @@
+---
+output: pdf_document
+---
+Using API's from R: Twitter, Facebook, and NY Times
+=========================
+
+```{r include=FALSE, cache=FALSE}
+library(twitteR)
+library(Rfacebook)
+library('rtimes')
+load("api_auth.rda")
+options(nytimes_as_key = nyt_api_key)
+```
+
+Many Internet data sources such as Twitter and Facebook offer a public API (application programming interface)
+that can be used to easily (and legally) retrieve data from their site.
+
+This tutorial will show how to use a selection of R client packages that are designed to query the APIs of Twitter, 
+Facebook, and the NY Times. 
+At the end, there will also be an example of querying an API without using a special R client. 
+
+Twitter
+=======
+
+
+To access twitter we will use the [twitteR](http://cran.r-project.org/web/packages/twitteR/index.html) packages. 
+The following code will load these packages, installing them if needed.
+You can skip the 'install_github' steps after the first time. 
+
+```{r, eval=F}
+install.packages("devtools") # only needed once
+devtools::install_github("geoffjentry/twitteR") # only needed once
+library(twitteR)
+```
+
+Connecting to Twitter
+----
+
+First, you need to get a number of tokens (a kind of passwords) from twitter:
+
+1. Sign in to twitter at http://twitter.com
+2. Go to https://apps.twitter.com/ and 'create a new app'
+3. After filling in the required information, go to 'keys and access tokens'
+4. Select 'create access token', and refresh
+5. Create variables with the consumer key, consumer secret, access token, and access token secret:
+
+```{r, eval=F}
+tw_token = '...'
+tw_token_secret = '...'
+tw_consumer_key = "..."
+tw_consumer_secret = "..."
+```
+
+
+Now you can connect using the setup_twitter_oauth function:
+
+```{r, message=F}
+setup_twitter_oauth(tw_consumer_key, tw_consumer_secret, tw_token, tw_token_secret)
+```
+
+Searching twitter
+----
+
+Please see the documentation for the Twitter API and the twitteR package for all the possibilities of the API. 
+As the following simple example shows, you can search for keywords and get a list or results
+
+```{r}
+tweets = searchTwitteR("#Trump2016", resultType="recent", n = 10)
+tweets[[1]]
+tweets[[1]]$text
+```
+
+To make it easier to manipulate the tweets, we can convert them from a list of `status` objects to a data.frame, for which we use the `ldply` (list-dataframe-ply) function from the plyr package, taking advantage of the fact that `as.data.frame` works on a single status object:
+
+```{r, message=F}
+tweets = plyr::ldply(tweets, as.data.frame)
+nrow(tweets)
+names(tweets)
+```
+
+Facebook
+===
+
+For querying facebook, we can use Pable Barbera's `Rfacebook` package, which we install directly from github:
+
+```{r, eval=F}
+devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
+install.packages("Rfacebook")
+library(Rfacebook)
+```
+To get a permanent facebook oath token, there are a number of steps you need to take
+
+1. Log on to facebook and go to https://developers.facebook.com/apps
+2. Create an app with the 'basic settings'
+3. Copy the the app id and app secret, and run fbOAth
+4. This will prompt you to paste a (localhost) url into your app settings. Add this setting in facebook app settings under products -> facebook login. 
+5. Next, authenticate in your web browser, and accept the permissions. 
+6. Now you have a `fb_token` that you can use for authentication in the API, which you can save for reuse
+
+```{r, eval=F}
+fb_app_id = '...'
+fb_app_secret = '...'
+fb_token = fbOAuth(fb_app_id, fb_app_secret)
+saveRDS(fb_token, "fb_token.rds")
+```
+
+Now, we can use the facebook API, e.g. to get all stories posted to the NY Times public facebook page:
+
+```{r}
+p = getPage(page="nytimes", token=fb_token)
+head(p)
+```
+
+We can also get all comments on a post, e.g. from the first post:
+
+```{r}
+post = getPost(p$id[1], token=fb_token)
+names(post$comments)
+```
+
+## NYTimes: package rtimes
+
+For the NY Times, we can use the `rtimes` package.
+Like the other APIs, we first need to get a key, which you can request at 
+
+```{r, eval=F}
+install.packages("rtimes")
+library('rtimes')
+nyt_api_key = '...'
+options(nytimes_as_key = nyt_api_key)
+```
+
+Now, we can use the `as_search` command to search for articles
+
+```{r}
+res <- as_search(q="trump", begin_date = "20160101", end_date = '20160501')
+names(res)
+res$meta
+```
+
+This will have returned the first 'page' of 10 results, which we can convert to a data frame using `ldply` from the `plyr` package:
+
+```{r}
+arts = plyr::ldply(res$data, function(x) c(headline=x$headline$main, date=x$pub_date))
+arts
+```
+
+## APIs and rate limits
+
+Most APIs limit how many requests you can make per minute, hour, or day.
+For example, twitter by default allows 180 search queries per 15 minutes,
+while NY Times allows 1000 requests per day. 
+
+Most APIs also have a way of checking how many queries you have 'left',
+for example for twitter you can use the following:
+
+```{r}
+twitteR::getCurRateLimitInfo("search")
+```
+
+The `twitteR` package has built-in functionality to retry if it reaches the rate limit, 
+and will automatically divide large requests into smaller requests.
+For example, if you ask for 1000 results, it will do 10 requests of 100 results each (the maximum per request).
+
+If such functionality is not available in the client library, you will need to work around these limits yourself (if needed).
+For example, the `rtimes` package only retrieves a single page per API call.
+To download all results for a call, we need to loop over the results ourselves. 
+
+The first step is finding out how many hits there are, for example for the front page articles mentioning Syria in January:
+
+```{r}
+res <- as_search(q="syria", fq='section_name:Front Page', begin_date = "20160101", end_date = '20160131')
+res$meta
+```
+
+So, there are 39 hits, i.e. 4 pages. We can query all pages by using a for loop, adding the pages to a list:
+
+```{r}
+npages = ceiling(res$meta$hits / 10)
+results = res$data
+for (p in 1:(npages-1)) {
+  res <- as_search(q="syria", fq='section_name:Front Page', begin_date = "20160101", end_date = '20160131', page=p)
+  results = c(results, res$data)
+}
+arts = plyr::ldply(results, function(x) c(headline=x$headline$main, date=x$pub_date))
+nrow(arts)
+tail(arts)
+```
+
+(Note that appending to the list every iteration is not very efficient, 
+but in this case the bottleneck is almost certainly the API call, so there is little to gain in optimizing this)
+
+## API access without client library
+
+For many popular APIs, such as Twitter, Facebook, and NY Times, an R client library already exists.
+However, if this doesn't exist it is relatively easy to query an API directly using HTTP calls,
+for example using the r `httr` package.
+
+The NY Times API is relatively easy, so it's a good case to show how to build an API client 'from scratch'.
+To build your own API client, the first step is to have a look at the [API documentation](http://developer.nytimes.com/article_search_v2.json) for the NY Times Article Search API.
+
+This tells us that we need to do a GET request to the articlesearch end point, specifying at least an `api-key` and a query `q`:
+
+```{r, results='hold'}
+library(httr)
+url = 'https://api.nytimes.com/svc/search/v2/articlesearch.json'
+r = httr::GET(url, query=list(`api-key`=nyt_api_key, q="clinton"))
+status_code(r)
+```
+
+The status code 200 indicates "OK", other status codes generally indicate a problem,
+such as an invalid API key. 
+The results are retrieved as a json-dictionary, which is accessible in R as a list through the `content` function in `httr`.
+The API documentation linked above contains a list of these fields, but you can also inspect the list itself from R:
+
+```{r}
+result = content(r)
+names(result)
+names(result$response$docs[[1]])
+result$response$docs[[1]]$headline
+```
+
+We can create a data frame of all articles with the `ldply` function from the `plyr` package as above:
+
+```{r}
+arts = plyr::ldply(result$response$docs, function(x) c(headline=x$headline$main, date=x$pub_date))
+head(arts)
+```
+
