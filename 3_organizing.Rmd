@@ -189,25 +189,3 @@ head(subset, n=10)
 ```
 
 
-Good practice: self-contained scripts
-====
-
-Using R is programming, and one of the most important parts of programming is managing your source code.
-An important thing to realize is that your code will be written only once, but read many times over.
-Spending twice as much time to make the code well organized and more readable might feel like wasting time,
-but you (or your colleagues/students) will be very happy when you are reading it again.
-Especially since in research code is often left alone for a number of months until it is time to review an article,
-it is very important to make sure that you (and ideally: the readers/reviewers of the article) can understand the code.
-
-Although there are no simple rules for writing readable code, and sometimes what is readable to one is quite cryptic to the other.
-However, here are three tips that I can offer and that I expect you to incorporate in your assignments:
-
-1. Use descriptive variable names. Use `income` (or better: `income.top.percent`) rather than `i`. 
-2. Use comments where needed, especially to explain decisions, assumptions, and possible problems. 
-   In R, every line starting with `#` is a comment, i.e. the line is completely skipped by R.
-3. Often, when doing an analysis you're not quite sure where you are going to end up, so you write a lot of code that turns out not to be needed. When your analysis is done, take a moment to reorganize the code, remove redundancies, et cetera. It is often best to just start a new file and copy paste the relevant bits (add comments where needed). Assume that your code will also be reviewed, even if it is not, because you are sure to read it again later and wonder why/how you did certain things. 
-4. Finally, try to write what I term 'self contained scripts'. The script should start with some kind of data gathering commands such as `download.file` or `read.csv`, and end with your analyses. You should be able to clear your environment and run the code from top to bottom and arrive at the same results. In fact, when cleaning up my code I often do just that: clean up part of the code, clear all, re-run, and check the results. This is also important for reproducibility, as being able to run the whole code and get the same results is the only guarantee that that code in fact produced these results. 
-
-We will come across some tools to make these things easier such as defining your own functions and working with knitr, but the most important thing is to accept the your code is part of your product and you should take the time to polish it a bit.
-
-

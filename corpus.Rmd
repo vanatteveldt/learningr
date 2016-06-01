@@ -1,6 +1,6 @@
 ---
-title: "Corpus analysis: the document-term matrix"
-output: html_document
+title: 'Corpus analysis: the document-term matrix'
+output: pdf_document
 ---
 
 =========================================
@@ -15,7 +15,8 @@ In R, these matrices are provided by the `tm` (text mining) package.
 Although this package provides many functions for loading and manipulating these matrices,
 using them directly is relatively complicated. 
 
-Fortunately, the `RTextTools` package provides an easy function to create a document-term matrix from a data frame. To create a term document matrix from a simple data frame with a 'text' column, use the `create_matrix` function (with removeStopwords=F to make sure all words are kept):
+Fortunately, the `RTextTools` package provides an easy function to create a document-term matrix from a data frame. 
+To create a term document matrix from a simple data frame with a 'text' column, use the `create_matrix` function (with removeStopwords=F to make sure all words are kept):
 
 ```{r,message=F}
 library(RTextTools)
@@ -205,60 +206,3 @@ to visualize the top words as a word cloud:
 ```{r, warning=F}
 dtm.wordcloud(dtm_filtered)
 ```
-
-Comparing corpora
-----
-
-Another useful thing we can do is comparing two corpora: 
-Which words or names are mentioned more in e.g. Bush' speeches than Obama's.
-
-To do this, we split the dtm in separate dtm's for Bush and Obama.
-For this, we select docment ids using the `headline` column in the metadata from `sotu.meta`, and then use the `dtm.filter` function:
-
-
-```{r}
-head(sotu.meta)
-obama.docs = sotu.meta$id[sotu.meta$headline == "Barack Obama"]
-dtm.obama = dtm.filter(dtm, documents=obama.docs)
-bush.docs = sotu.meta$id[sotu.meta$headline == "George W. Bush"]
-dtm.bush = dtm.filter(dtm, documents=bush.docs)
-```
-
-So how can we check which words are more frequent in Bush' speeches than in Obama's speeches?
-The function `corpora.compare` provides this functionality, given two document-term matrices:
-
-```{r}
-cmp = corpora.compare(dtm.obama, dtm.bush)
-cmp = cmp[order(cmp$over), ]
-head(cmp)
-```
-
-For each term, this data frame contains the frequency in the 'x' and 'y' corpora (here, Obama and Bush).
-Also, it gives the relative frequency in these corpora (normalizing for total corpus size)
-and the overrepresentation in the 'x' corpus and the chi-squared value for that overrepresentation.
-So, Bush used the word terrorist 105 times, while Obama used it only 13 times, and in relative terms Bush used it about four times as often, which is highly significant. 
-
-Which words did Obama use most compared to Bush?
-
-```{r}
-cmp = cmp[order(cmp$over, decreasing=T), ]
-head(cmp)
-```
-
-So, while Bush talks about freedom, war, and terror, Obama talks more about industry, banks and education. 
-
-Let's make a word cloud of Obama' words, with size indicating chi-square overrepresentation:
-
-```{r, warning=F}
-obama = cmp[cmp$over > 1,]
-dtm.wordcloud(terms = obama$term, freqs = obama$chi)
-```
-
-And Bush:
-
-```{r, warning=F}
-bush = cmp[cmp$over < 1,]
-dtm.wordcloud(terms = bush$term, freqs = bush$chi)
-```
-
-Note that the warnings given by these commands are relatively harmless: it means that some words are skipped because it couldn't find a good place for them in the word cloud. 

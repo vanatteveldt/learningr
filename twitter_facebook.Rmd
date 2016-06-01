@@ -2,7 +2,11 @@
 output: pdf_document
 ---
 Using API's from R: Twitter, Facebook, and NY Times
-=========================
+========================
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
 
 ```{r include=FALSE, cache=FALSE}
 library(twitteR)
@@ -66,6 +70,8 @@ As the following simple example shows, you can search for keywords and get a lis
 
 ```{r}
 tweets = searchTwitteR("#Trump2016", resultType="recent", n = 10)
+
+
 tweets[[1]]
 tweets[[1]]$text
 ```
@@ -85,7 +91,6 @@ For querying facebook, we can use Pable Barbera's `Rfacebook` package, which we 
 
 ```{r, eval=F}
 devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
-install.packages("Rfacebook")
 library(Rfacebook)
 ```
 To get a permanent facebook oath token, there are a number of steps you need to take
@@ -142,7 +147,7 @@ This will have returned the first 'page' of 10 results, which we can convert to 
 
 ```{r}
 arts = plyr::ldply(res$data, function(x) c(headline=x$headline$main, date=x$pub_date))
-arts
+head(arts)
 ```
 
 ## APIs and rate limits
@@ -204,13 +209,14 @@ This tells us that we need to do a GET request to the articlesearch end point, s
 ```{r, results='hold'}
 library(httr)
 url = 'https://api.nytimes.com/svc/search/v2/articlesearch.json'
-r = httr::GET(url, query=list(`api-key`=nyt_api_key, q="clinton"))
+r = httr::GET(url, query=list("api-key"=nyt_api_key, q="clinton"))
 status_code(r)
 ```
 
 The status code 200 indicates "OK", other status codes generally indicate a problem,
-such as an invalid API key. 
-The results are retrieved as a json-dictionary, which is accessible in R as a list through the `content` function in `httr`.
+such as an invalid API key (search for 'HTTP Status codes' for an overview)
+The results are retrieved as a json-dictionary, which is accessible in R as a list through the `content` function in `httr`,
+which identifies the data type based on the headers and converts it.
 The API documentation linked above contains a list of these fields, but you can also inspect the list itself from R:
 
 ```{r}

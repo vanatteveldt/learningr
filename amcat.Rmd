@@ -119,7 +119,7 @@ head(tokens)
 So you can see this lemmatizes (stems) words and gives their part of speech (noun, verb, etc.)
 Let's plot only the names:
 
-```{r, message=F}
+```{r, warning=F, message=F}
 subset = tokens[tokens$pos == "name", ]
 dtm = dtm.create(subset$aid, subset$lemma)
 dtm.wordcloud(dtm, nterms = 200)
