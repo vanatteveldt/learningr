@@ -1,11 +1,12 @@
 ---
 title: 'Corpus analysis: the document-term matrix'
 output: pdf_document
+author: Wouter van Atteveldt
 ---
 
-=========================================
-
-_(C) 2015 Wouter van Atteveldt, license: [CC-BY-SA]_
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
 
 The most important object in frequency-based text analysis is the *document term matrix*. 
 This matrix contains the documents in the rows and terms (words) in the columns, 
@@ -88,7 +89,7 @@ and log onto amcat:
 
 ```{r, message=FALSE, eval=FALSE}
 library(amcatr)
-amcat.save.password("http://preview.amcat.nl", "username",  "password")
+amcat.save.password("https://amcat.nl", "username",  "password")
 conn = amcat.connect("https://amcat.nl")
 ```
 
@@ -101,9 +102,9 @@ Now, we can upload articles from R using the `amcat.upload.articles` function, w
 
 
 ```{r}
-articles = data.frame(text = "John is a great fan of chickens, and so is Mary", date="2001-01-01", headline="test")
+articles = data.frame(text = "John is a great fan of chickens, and so is Mary", date="2001-01-01T00:00", headline="test")
 
-aset = amcat.upload.articles(conn, project = 1, articleset="Test Florence", medium="test", 
+aset = amcat.upload.articles(conn, project = 1, articleset="Test", medium="test", 
                              text=articles$text, date=articles$date, headline=articles$headline)
 ```
 
@@ -111,7 +112,8 @@ And we can then lemmatize this article and download the results directly to R
 using `amcat.gettokens`:
 
 ```{r}
-amcat.gettokens(conn, project=1, articleset = aset, module = "corenlp_lemmatize")
+tokens = amcat.gettokens(conn, project=1, articleset = aset, module = "corenlp_lemmatize")
+head(tokens)
 ```
 
 And we can see that e.g. for "is" the lemma "be" is given. 
@@ -119,17 +121,11 @@ Note that the words are not in order, and the two occurrences of "is" are automa
 This can be switched off by giving `drop=NULL` as extra argument.
 
 For a more serious application, we will use an existing article set: [set 16017](https://amcat.nl/navigator/projects/559/articlesets/16017/) in project 559, which contains the state of the Union speeches by Bush and Obama (each document is a single paragraph)
-The analysed tokens for this set can be downloaded with the following command:
 
-```{r eval=FALSE}
-sotu.tokens = amcat.gettokens(conn, project=559, articleset = 16017, module = "corenlp_lemmatize", page_size = 100)
-```
+This data is available directly from the corpustools package:
 
-Note: the command above might take a while to complete. 
-This data is also available directly from the semnet package:
-
-```{r}
-library(semnet)
+```{r, message=F}
+library(corpustools)
 data(sotu)
 nrow(sotu.tokens)
 head(sotu.tokens, n=20)
@@ -139,7 +135,6 @@ As you can see, the result is similar to the ad-hoc lemmatized tokens, but now w
 We can create a document-term matrix using the dtm.create command from `corpustools`:
 
 ```{r, warning=FALSE}
-library(corpustools)
 dtm = dtm.create(documents=sotu.tokens$aid, terms=sotu.tokens$lemma, filter=sotu.tokens$pos1 %in% c("M","N"))
 dtm
 ```
