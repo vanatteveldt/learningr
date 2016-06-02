@@ -93,7 +93,7 @@ amcat.save.password("https://amcat.nl", "username",  "password")
 conn = amcat.connect("https://amcat.nl")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=F}
 library(amcatr)
 conn = amcat.connect("https://amcat.nl")
 ```
@@ -198,6 +198,6 @@ Which yields a much more managable dtm.
 As a bonus, we can use the `dtm.wordcloud` function in corpustools (which is a thin wrapper around the `wordcloud` package)
 to visualize the top words as a word cloud:
 
-```{r, warning=F}
+```{r, warning=F, eval=F}
 dtm.wordcloud(dtm_filtered)
 ```

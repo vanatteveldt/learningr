@@ -1,0 +1,112 @@
+---
+title: "Using AmCAT from R"
+author: "Wouter van Atteveldt"
+date: "May 25, 2016"
+output: pdf_document
+---
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+This handout describes how to connect to AmCAT from R to conduct queries, download metadata, and upload articles and create new article sets.
+You will need an account on a working AmCAT server, you can create a free account at [https://amcat.nl](https://amcat.nl) or install your own server,
+see [https://github.com/amcat/amcat](the AmCAT github page).
+
+You will also need to install the `amcatr` package from github, for which you will need the devtools package:
+
+```{r, eval=F}
+install.packages("devtools")
+devtools::install_github("amcat/amcat-r")
+```
+
+# Connecting to AmCAT
+
+On every computer you need to save your AmCAT password once::
+
+```{r, eval=F}
+library(amcatr)
+amcat.save.password("https://amcat.nl", "your_username", "your_password")
+```
+```{r, echo=F, message=F}
+library(amcatr)
+```
+
+Next, you can connect using the `amcat.connect` function, storing the connection details in an object `conn`.
+The token that this creates is valid for 24 hours, so you need to run this command every session:
+
+```{r}
+conn = amcat.connect("https://amcat.nl")
+```
+
+# Retrieving article (meta)data
+
+The `amcat.getarticlemeta` command allows you to retrieve the metadata from an article set.
+Using the columns keyword, you can specify which columns to select, e.g. headline, medium, and author.
+
+```{r, message=F}
+meta = amcat.getarticlemeta(conn, 41, 29454, dateparts = T, columns=c("medium", "date"))
+head(meta)
+```
+
+# Querying AmCAT
+
+You can use the `amcat.hits` function to run a keyword query which returns the number of hits per document for a query:
+
+```{r, message=F}
+h = amcat.hits(conn, c("mortgage*", "greek* OR greece*"), labels=c("mortgage", "greece"), sets=29454)
+head(h)
+```
+
+You can supply multiple queries, and can also supply labels for the queries with the labels argument.
+
+While the hits command returns a row per document per query, you can also get aggregate data directly with the `amcat.aggregate` command,
+specifying the aggregation axes such as medium, date, and keyword:
+
+```{r, message=F}
+t = amcat.aggregate(conn, "mortgage*", sets=29454, axis1="year", axis2="medium")
+head(t)
+```
+
+We can also do the aggregation within R by merging the hits data with the meta data and using the `aggregate` command.
+For example, this code will create a plot of hits per newspaper per week:
+
+```{r}
+h = merge(meta, h)
+perweek = aggregate(h["count"], h[c("year", "query")], sum)
+library(ggplot2)
+ggplot(perweek, aes(x=year, y=count, color=query)) + geom_line()
+```
+
+# Uploading articles
+
+It is also possible to upload articles from R using the `amcat.upload.articles` command.
+This allows you to e.g. upload articles form a csv file or folder, or retrieve articles from an API and upload them.
+
+```{r}
+d = data.frame(headline=c("A test", "Another test"), date=as.Date(c("2001-01-01", "2008-12-31")))
+setid = amcat.upload.articles(conn, project=1, articleset = "Test set",
+  medium="test", headline=d$headline, date=d$date, text=d$headline)
+arts = amcat.getarticlemeta(conn, project = 1, articleset=setid, columns = c("date", "headline"))
+head(arts)
+```
+
+# Adding articles to article sets
+
+
+Finally, you can add existing articles to a new or existing article set. 
+For example, we could add the first articles from the set we used earlier to our new test set:
+
+```{r}
+articles = meta$id[1:3]
+amcat.add.articles.to.set(conn, project = 1, articleset = setid, articles=articles)
+```
+
+By specifying an articleset.name rather than an existing set id, we can also create a new articleset from a selection of articles:
+
+
+```{r}
+articles = meta$id[1:3]
+setid2 = amcat.add.articles.to.set(conn, project = 1, articleset.name="New test set", articles=articles)
+```
+

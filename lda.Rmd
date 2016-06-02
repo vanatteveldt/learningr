@@ -1,16 +1,21 @@
+---
+title: "Topic Modeling with R"
+author: "Wouter van Atteveldt"
+date: "June 3, 2016"
+output: pdf_document
+---
+
 ```{r, include=FALSE}
 library(knitr)
 opts_chunk$set(fig.path = "figures_lda/")
+head = function(...) knitr::kable(utils::head(...))
 ```
-
-Latent Dirichlet Allocation
-========================================================
 
 Topic modelling techniques such as Latent Dirichlet Allocation (LDA) can be a usefull tool for social scientists to analyze large amounts of natural language data. Algorithms for LDA are available in R, for instance in the `topicmodels` package. In this howto we demonstrate several function in the `corpustools` package that facilitate the use of LDA using the `topicmodels` package.
 
 As a starting point we use a Document Term Matrix (dtm) in the `DocumentTermMatrix` format offered in the `tm` package. Note that we also offer a howto for creating the dtm. 
 
-```{r}
+```{r, warning=F, message=F}
 library(corpustools)
 data(sotu) # state of the union speeches by Barack Obama and George H. Bush.
 head(sotu.tokens)
@@ -29,13 +34,27 @@ The main input for `topmod.lda.fit` is:
 
 ```{r}
 set.seed(12345)
-m = lda.fit(dtm, K=20, num.iterations=1000)
+m = lda.fit(dtm, K=20, num.iterations=100)
 terms(m, 10)[,1:5] # show first 5 topics, with ten top words per topic
 ```
 
 We now have a fitted lda model. The `terms` function shows the most prominent words for each topic (we only selected the first 5 topics for convenience). 
 
-One of the thing we can do with the LDA topics, is analyze how much attention they get over time, and how much they are used by different sources (e.g., people, newspapers, organizations). To do so, we need to match this article metadata. We can order the metadata to the documents in the LDA model by matching it to the documents slot.
+Visualizing LDA models
+===
+
+The easiest way to visualize an LDA model is using the LDAvis package:
+
+```{r, eval=F}
+library(LDAvis)
+serVis(ldavis_json(m, dtm))
+```
+
+(run interactively to see results)
+
+Another way to visualize LDA results is to plot word use and metadata about the indivual topics:
+E.g., how much attention they get over time, how much they are used by different sources (e.g., people, newspapers, organizations).
+To do so, we first need to match the metadata to the documents in the model to make sure they are in the same order:
 
 ```{r}
 head(sotu.meta)
@@ -46,12 +65,14 @@ We can now do some plotting. First, we can make a wordcloud for a more fancy (an
 
 ```{r, message=F, warning=FALSE, fig.width=6, fig.height=6}
 lda.plot.wordcloud(m, topic_nr=1)
+```
+```{r, eval=F}
 lda.plot.wordcloud(m, topic_nr=2)
 ```
 
 With `lda.plot.time` and `lda.plot.category`, we can plot the salience of the topic over time and for a given categorical variable.
 
-```{r}
+```{r, eval=F}
 lda.plot.time(m, 1, meta$date, date_interval='year')
 lda.plot.category(m, 1, meta$headline)
 ```
@@ -60,6 +81,8 @@ It can be usefull to print all this information together. That is what the follo
 
 ```{r, message=F, warning=FALSE, fig.width=10, fig.height=10}
 lda.plot.topic(m, 1, meta$date, meta$headline, date_interval='year')
+```
+```{r, eval=F}
 lda.plot.topic(m, 2, meta$date, meta$headline, date_interval='year')
 ```
 
@@ -70,3 +93,58 @@ docs = topics.per.document(m)
 docs = merge(meta, docs)
 head(docs)
 ```
+
+Calculating perplexity
+===
+
+Although in the end the best guide to determining the amount and interpretation of topics is expert judgment,
+it can be useful to plot the 'perplexity' (model error) of various settings for K (and alpha).
+
+The first step is to create separate data for fitting the model and validating it to avoid overfitting,
+basically using a split-half technique.
+Although it is easy to subset the dtm based on a sample of row names (ids),
+care must be taken that there are no zero-only rows and columns, and that the vocabulary (colnames) of the validation dtm
+matches that of the dtm used to fit the model: 
+
+```{r}
+ids = rownames(dtm)
+fit_ids = sample(ids, length(ids) / 2)
+dtm.subset <- function(dtm, rows, cols=colnames(dtm)) {
+  dtm = dtm[rownames(dtm) %in% rows, colnames(dtm) %in% cols]
+  dtm = dtm[row_sums(dtm) > 0, col_sums(dtm) > 0]
+  weightTf(dtm)
+}
+dtm_fit = dtm.subset(dtm, fit_ids)
+dtm_validate = dtm.subset(dtm, setdiff(ids,  fit_ids), colnames(dtm_fit))
+```
+
+Now, we can calculate the perplexity by fitting a number of models for each K,
+adding each to a data frame of perplexity scores:
+
+```{r}
+perplex = NULL
+for (k in seq(10, 50, by=10)) {
+  for (i in 1:2) {
+    m = lda.fit(dtm_fit, K=k, alpha=.1)
+    p = perplexity(m, dtm_validate)
+    perplex = rbind(perplex, c(k=k, i=i, p=p))
+  }
+}
+head(perplex)
+```
+
+
+Now we can plot the average perplexity per K in a scree plot:
+
+```{r}
+perplex = as.data.frame(perplex)
+p = aggregate(perplex["p"], perplex["k"], mean)
+library(ggplot2)
+ggplot(p, aes(x=k, y=p, )) + geom_line()  +geom_point()
+```
+
+This suggests that it could be interesting to inspect the region around k=10 better, as perplexity actually increased going to k=20.
+Perplexity is also still decreasing at k=50, but there seems to be an elbow point at k=40.
+Note that normally you should use more iterations per k and also test intermediate k values,
+increasing computational complexity especially for very large datasets. 
+

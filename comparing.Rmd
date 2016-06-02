@@ -78,11 +78,26 @@ obama = cmp[cmp$over > 1,]
 dtm.wordcloud(terms = obama$term, freqs = obama$chi)
 ```
 
-And Bush:
+And the same for bush: (output not shown)
 
-```{r, warning=F}
+```{r, warning=F, eval=F}
 bush = cmp[cmp$over < 1,]
 dtm.wordcloud(terms = bush$term, freqs = bush$chi)
 ```
 
-Note that the warnings given by these commands are relatively harmless: it means that some words are skipped because it couldn't find a good place for them in the word cloud. 
+Note that the warnings given by these commands are relatively harmless: it means that some words are skipped because it couldn't find a good place for them in 
+the word cloud. 
+
+\newpage
+
+Contrast plots
+====
+
+Finally, we can use `plotWords` in the `corpustools` package to make a wordcloud-style plot with Obama's word on the right
+and Bush' words on the left:
+
+
+```{r}
+with(arrange(cmp, -chi)[1:100, ],
+plotWords(x=log(over), words = term, wordfreq = chi, random.y = T))
+```
