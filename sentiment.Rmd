@@ -1,0 +1,123 @@
+---
+title: "Lexical Sentiment Analysis"
+author: "Wouter van Atteveldt"
+date: "June 3, 2016"
+output: pdf_document
+---
+
+
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+
+Dictionaries of positive and negative terms can be used to do sentiment analysis,
+assuming that a document with many positive terms will have a more positive sentiment.
+
+Lexicon and data
+---
+
+For this exercise, we will use the Pittsburgh sentiment dictionary and the Amazon automotive reviews
+as described in the 'Getting Sentiment Resources' hand-out. 
+These files can be directly downloaded here: [reviews](rawgit.com/vanatteveldt/learningr/master/data/reviews.rds); [lexicon](rawgit.com/vanatteveldt/learningr/master/data/lexison.rds).
+
+
+```{r}
+reviews = readRDS("data/reviews.rds")
+lexicon = readRDS("data/lexicon.rds")
+```
+
+Applying Sentiment Dictionary to DTM
+===
+
+You can directly apply a dictionary to the document term matrix 
+by summing the columns that match each category.
+
+First, we create the document term matrix consisting of all reviews:
+
+```{r, message=F}
+library(RTextTools)
+dtm = create_matrix(reviews[c("summary", "reviewText")], language="english", stemWords=T)
+```
+
+And we select the words that are in the negative or positive category:
+
+```{r}
+pos_words = lexicon$word1[lexicon$priorpolarity == "positive"]
+neg_words = lexicon$word1[lexicon$priorpolarity == "negative"]
+```
+
+Now, we use these words to subset the dtm, and use `row_sums` to sum all words in the same category for each document:
+
+```{r}
+library(slam)
+reviews$npos = row_sums(dtm[, colnames(dtm) %in% pos_words])
+reviews$nneg = row_sums(dtm[, colnames(dtm) %in% neg_words])
+```
+
+Finally, we can calculate a sentiment score, for example the number of positive minus negative words normalized by the total number of sentiment words:
+
+```{r}
+reviews$sent = (reviews$npos - reviews$nneg) / (reviews$npos + reviews$nneg)
+reviews$sent[is.na(reviews$sent)] = 0
+```
+
+Validating sentiment
+===
+
+The best way to validate dictionary results is to compare them with manual coding.
+In this case, we can compute the average calculated sentiment per coded sentiment rating:
+
+```{r}
+cat(length(reviews$sent))
+cat(length(reviews$overall))
+#table(reviews$sent, reviews$overall, mean, na.rm=T)
+```
+
+So, the higher the sentiment score, the higher the manaully coded sentiment. The correlation between the two is low, though: 
+
+```{r}
+cor.test(reviews$sent, reviews$overall)
+```
+
+An alternative is to do linear discriminant analysis with a dichotomous dependent variable, 
+taking only the 5 star ratings:
+
+```{r}
+reviews$positive = as.factor(ifelse(reviews$overall == 5, "pos", "neg"))
+m = MASS::lda(positive ~ sent, data=reviews, CV=T)
+```
+
+And compute the classification accuracy:
+
+```{r}
+t = table(reviews$positive, m$class)
+sum(diag(t)) / sum(t)
+```
+
+Which is  not great considering there are only two answer categories. 
+
+Applying sentiment to token lists
+===
+
+We can also apply sentiment to a token list, for example the state of the union speeches.
+
+```{r, message=F}
+library(corpustools)
+data(sotu)
+sotu.tokens$sent = 0
+sotu.tokens$sent[sotu.tokens$word %in% pos_words] = 1
+sotu.tokens$sent[sotu.tokens$word %in% neg_words] = -1
+head(sotu.tokens)
+```
+
+And compute the mean sentiment per article:
+
+```{r}
+sent = aggregate(sotu.tokens["sent"], sotu.tokens["aid"], mean)
+sent = merge(sent, sotu.meta, by.x="aid", by.y="id")
+head(sent)
+```
+
+

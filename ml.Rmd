@@ -28,26 +28,8 @@ Obtaining data
 ----
 
 For this example, we will use Amazon reviews from http://jmcauley.ucsd.edu/data/amazon/ and classify whether they are positive or negative.
-Note that text classification can be used generally for nominal values, so you can also use it for classifying topic, frames, etc.
-
-These reviews are stored in a gzipped while which contains one json record per line, 
-so we use scan to split the file into lines, and then read each line with a custom functions that converts the line from json and into a data frame.
-We then use `ldply` to apply this function to each line:
-
-```{r, eval=F}
-url = "http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Automotive_5.json.gz"
-download.file(url, destfile="reviews.json.gz")
-lines = scan(gzfile("reviews.json.gz"), sep = "\n", what="")
-readline = function(line) {
-  x = rjson::fromJSON(line)
-  x$helpful = NULL
-  as.data.frame(x)    
-}
-reviews = plyr::ldply(lines, readline)
-saveRDS(reviews, "data/reviews.rds")
-```
-
-Since this takes a while to process, we save the reviews as an RDS file, which you can also download directly from [here](rawgit.com/vanatteveldt/learningr/master/data/reviews.rds):
+See the hand-out 'Getting Sentiment Resources' hand-out for how to download and prepare these yourlelf,
+or you can download the [reviews](reviews.rds) directly.
 
 ```{r}
 reviews = readRDS("data/reviews.rds")

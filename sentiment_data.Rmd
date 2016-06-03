@@ -1,0 +1,69 @@
+---
+title: "Getting Sentiment Resources from the Internet"
+author: "Wouter van Atteveldt"
+date: "June 3, 2016"
+output: pdf_document
+---
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+This handout describes how to download and parse a sentiment lexicon and collection of reviews from the Internet. 
+
+You don't need to run this as the results are saved in the github repository and can be downloaded directly: [lexicon](rawgit.com/vanatteveldt/learningr/master/data/lexicon.rds); [reviews](rawgit.com/vanatteveldt/learningr/master/data/reviews.rds).
+However, it can be interesting to see how to download files and parse the 'custom' file formats in R.
+
+Pittsburgh Sentiment Lexicon
+===
+
+There are many sentiment dictionaries available for download.
+For this handout, we use a dictionary developed at the University of Pittsburgh that can be freely downloaded from http://mpqa.cs.pitt.edu/lexicons/subj_lexicon/.
+
+```{r, message=F}
+url = "http://mpqa.cs.pitt.edu/data/subjectivity_clues_hltemnlp05.zip"
+file = "subjectivity_clues_hltemnlp05/subjclueslen1-HLTEMNLP05.tff"
+download.file(url, destfile="lexicon.zip")
+unzip("lexicon.zip", file=file)
+lines = scan(file, what = "", sep="\n")
+head(lines)
+```
+
+The file contained is in a somewhat strange format, with one word per line coded as name=value pairs.
+So, we make a 'read_pairs' function that we apply to the result of extracting all name=value pairs per line:
+
+```{r}
+read_pairs = function(x, fields) { 
+  x = x[x[,2] %in% fields, ]
+  values = x[,3]
+  names(values) = x[,2]
+  values
+}
+m = stringr::str_match_all(lines, "(\\w+)=([^=]+)(?= |$)")
+fields = m[[1]][,2]
+lexicon = plyr::ldply(m, read_pairs, fields=fields)
+saveRDS(lexicon, "data/lexicon.rds")
+head(lexicon)
+```
+
+Amazon Reviews
+===
+
+For this exercise we will download the Amazon reviews in the 'automotive' category as published at http://jmcauley.ucsd.edu/data/amazon/.
+
+These reviews are stored in a gzipped while which contains one json record per line, 
+so we use scan to split the file into lines, and then read each line with a custom functions that converts the line from json and into a data frame.
+We then use `ldply` to apply this function to each line:
+
+```{r}
+url = "http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Automotive_5.json.gz"
+download.file(url, destfile="reviews.json.gz")
+lines = scan(gzfile("reviews.json.gz"), sep = "\n", what="")
+readline = function(line) {
+  x = rjson::fromJSON(line)
+  x$helpful = NULL
+  as.data.frame(x)    
+}
+reviews = plyr::ldply(lines, readline)
+saveRDS(reviews, "data/reviews.rds")
+head(reviews)
+```
