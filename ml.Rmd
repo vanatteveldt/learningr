@@ -1,0 +1,226 @@
+---
+title: "Text Classification with R"
+author: "Wouter van Atteveldt"
+date: "June 1, 2016"
+output: pdf_document
+---
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+
+Machine Learning or automatic text classification is a set of techniques to train a statistical model on a set of annotated (coded) training texts, that can then be used to predict the category or class of new texts.
+
+R has a number of different packages for various machine learning algorithm such as maximum entropy modeling, neural networks, and support vector machines. 
+`RTextTools` provides an easy way to access a large number of these algorithms.
+
+In principle, like 'classical' statistical models, machine learning uses a number of (independent) variables called _features_ to predict a target (dependent) category or class. 
+In text mining, the independent variables are generally the term frequencies, and as such the input for the machine learning is the document-term matrix. 
+
+RTextTools can be installed directly from CRAN:
+
+```{r, eval=F}
+install.packages("RTextTools")
+```
+
+Obtaining data
+----
+
+For this example, we will use Amazon reviews from http://jmcauley.ucsd.edu/data/amazon/ and classify whether they are positive or negative.
+Note that text classification can be used generally for nominal values, so you can also use it for classifying topic, frames, etc.
+
+These reviews are stored in a gzipped while which contains one json record per line, 
+so we use scan to split the file into lines, and then read each line with a custom functions that converts the line from json and into a data frame.
+We then use `ldply` to apply this function to each line:
+
+```{r, eval=F}
+url = "http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Automotive_5.json.gz"
+download.file(url, destfile="reviews.json.gz")
+lines = scan(gzfile("reviews.json.gz"), sep = "\n", what="")
+readline = function(line) {
+  x = rjson::fromJSON(line)
+  x$helpful = NULL
+  as.data.frame(x)    
+}
+reviews = plyr::ldply(lines, readline)
+saveRDS(reviews, "data/reviews.rds")
+```
+
+Since this takes a while to process, we save the reviews as an RDS file, which you can also download directly from [here](rawgit.com/vanatteveldt/learningr/master/data/reviews.rds):
+
+```{r}
+reviews = readRDS("data/reviews.rds")
+```
+
+Creating the Document Term Matrix
+----
+
+So, the first step is to create a document-term matrix. 
+To make it run faster for testing, we take a limited data set here. 
+Since reviews are mostly positive (taking positive to be 4 or 5 stars),
+we sample 500 positive and 500 negative reviews to use: 
+
+```{r}
+reviews$id = 1:nrow(reviews)
+reviews$positive = as.numeric(reviews$overall >= 4)
+pos = sample(reviews$id[reviews$positive == 1], 500)
+neg = sample(reviews$id[reviews$positive == 0], 500)
+reviews = reviews[reviews$id %in% c(pos, neg), ]
+```
+
+
+Now, we can create a dtm:
+
+```{r, message=F}
+library(RTextTools)
+dtm = create_matrix(reviews[c("summary", "reviewText")], language="english", stemWords=T)
+```
+
+Of course, now that we have a DTM we can plot a word cloud to get some feeling of the most frequent words:
+
+```{r, warning=F, message=F}
+library(corpustools)
+dtm.wordcloud(dtm)
+```
+
+(we could also e.g. compare the words in positive and negative reviews, or run a topic model on only the positive or negative terms; see the handouts `comparing.pdf` and `lda.pdf`, respectively)
+
+Preparing the training and testing data
+---
+
+The next step is to create the RTextTools _container_. 
+This contains both the dt matrix and the manually coded classes,
+and you specify which parts to use for training and which for testing.
+
+To make sure that we get a random sample of documents for training and testing,
+we sample 80% of the set for training and the remainder for testing.
+(Note that it is important to sort the indices as otherwise GLMNET will fail)
+
+
+
+```{r}
+n = nrow(dtm)
+train = sort(sample(1:n, n*.8))
+test = sort(setdiff(1:n, train))
+```
+
+Now, we are ready to create the container:
+
+```{r}
+c = create_container(dtm, reviews$positive, trainSize=train, testSize=test, virgin=F)
+```
+
+Using this container, we can train different models:
+
+```{r}
+SVM <- train_model(c,"SVM")
+MAXENT <- train_model(c,"MAXENT")
+GLMNET <- train_model(c,"GLMNET")
+```
+
+Testing model performance
+----
+
+Using the same container, we can classify the 'test' dataset
+
+```{r}
+SVM_CLASSIFY <- classify_model(c, SVM)
+MAXENT_CLASSIFY <- classify_model(c, MAXENT)
+GLMNET_CLASSIFY <- classify_model(c, GLMNET)
+```
+
+Let's have a look at what these classifications yield:
+
+```{r}
+head(SVM_CLASSIFY)
+```
+
+For each document in the test set, the predicted label and probability are given. 
+We can compare these predictions to the correct classes manually:
+
+```{r}
+t = table(SVM_CLASSIFY$SVM_LABEL, as.character(reviews$positive[test]))
+t
+```
+
+(Note that the as.character cast is necessary to align the rows and columns)
+And compute the accuracy:
+
+```{r}
+sum(diag(t)) / sum(t)
+```
+
+
+Analytics
+----
+
+To make it easier to compute the relevant metrics, RTextTools has a built-in analytics function:
+
+```{r}
+analytics <- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
+names(attributes(analytics))
+```
+
+The `algorithm_summary` gives the performance of the various algorithms, with precision, recall, and f-score given per algorithm:
+
+```{r}
+head(analytics@algorithm_summary)
+```
+
+The `label_summary` gives the performance per label (class):
+
+```{r}
+head(analytics@label_summary)
+```
+
+Finally, the `ensemble_summary` gives an indication of how performance changes based on the amount of classifiers that agree on the classification:
+
+```{r}
+head(analytics@ensemble_summary)
+```
+
+The last attribute, `document_summary`, contains the classifications of the various algorithms per document, and also lists how many agree and whether the consensus and the highest probability classifier where correct:
+
+```{r}
+head(analytics@document_summary)
+```
+
+Classifying new material
+----
+
+New material (called 'virgin data' in RTextTools) can be coded by placing the old and new material in a single container. 
+Let's assume that we don't know the sentiment of 20% of our material:
+
+```{r}
+reviews$positive[1:200] = NA
+```
+
+We now set all documents with a sentiment score as training material, and specify `virgin=T` to indicate that we don't have coded classes on the test material:
+
+```{r}
+coded = which(!is.na(reviews$positive))
+c = create_container(dtm, reviews$positive, trainSize=coded, virgin=T)
+```
+
+We can now build and test the model as before:
+
+```{r}
+SVM <- train_model(c,"SVM")
+MAXENT <- train_model(c,"MAXENT")
+GLMNET <- train_model(c,"GLMNET")
+SVM_CLASSIFY <- classify_model(c, SVM)
+MAXENT_CLASSIFY <- classify_model(c, MAXENT)
+GLMNET_CLASSIFY <- classify_model(c, GLMNET)
+analytics <- create_analytics(c, cbind(SVM_CLASSIFY, GLMNET_CLASSIFY, MAXENT_CLASSIFY))
+names(attributes(analytics))
+```
+
+As you can see, the analytics now only has the `label_summary` and `document_summary`:
+
+```{r}
+analytics@label_summary
+head(analytics@document_summary)
+```
+
+The label summary now only contains an overview of how many where coded using consensus and probability. The document_summary lists the output of all algorithms, and the consensus and probability code. 
