@@ -72,7 +72,7 @@ In this case, we can compute the average calculated sentiment per coded sentimen
 ```{r}
 cat(length(reviews$sent))
 cat(length(reviews$overall))
-#table(reviews$sent, reviews$overall, mean, na.rm=T)
+tapply(reviews$sent, reviews$overall, mean, na.rm=T)
 ```
 
 So, the higher the sentiment score, the higher the manaully coded sentiment. The correlation between the two is low, though: 
