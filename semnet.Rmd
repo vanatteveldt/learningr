@@ -1,5 +1,13 @@
-Creating semantic networks
-========================================================
+---
+title: "Semantic Network Analysis"
+author: "Kasper Welbers & Wouter van Atteveldt "
+date: "May 25, 2016"
+output: pdf_document
+---
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
 
 One way to create semantic networks is to calculate how often words co-occur together. This co-occurence reflects a semantic relation, because it indicates that the meaning of these words is related.
 
@@ -7,7 +15,7 @@ In this howto we demonstrate two functions to calculate the co-occurence of word
 
 We start with a simple example. 
 
-```{r}
+```{r, message=F}
 library(semnet)
 data(simple_dtm)
 dtm
@@ -15,7 +23,7 @@ dtm
 
 `dtm` is a document term matrix: the rows represent documents and the columns represent words. Values represent how often a word occured within a document. The co-occurence of words can then be calculated as the number of documents in which two words occur together. This is what the `coOccurenceNetwork` function does. 
 
-```{r}
+```{r, warning=F}
 g = coOccurenceNetwork(dtm)
 plot(g, vertex.size=V(g)$freq*10)
 ```
@@ -47,6 +55,8 @@ vcount(g)
 ecount(g)
 ```
 
+# Visualizing Semantic Networks
+
 The output `g` is an igraph object---a popular format for representing and working with graph/network data. `vcount(g)` shows that the number of vertices (i.e. terms) is 3976. `ecount(g)` shows that the number of edges is 201792. 
 
 Naturally, this would not be an easy network to interpret. Therefore, we first filter on the most important vertices and edges. There are several methods to do so (see e.g., [Leydesdorff & Welbers, 2011]{http://arxiv.org/abs/1011.5209}). Here we use backbone extraction, which is a relatively new method (see [Kim & Kim, 2015]{http://jcom.sissa.it/archive/14/01/JCOM_1401_2015_A01}. Essentially, this method filters out edges that are not significant based on an alpha value, which can be interpreted similar to a p-value. To filter out vertices, we lower the alpha to a point where only the specified number of vertices remains.   
@@ -77,12 +87,117 @@ The output of the (windowed)coOccurenceNetwork function by default contains the 
 
 
 ```{r}
-# add vertex cluster membership based on edge.betweenness.community clustering
 V(g_backbone)$cluster = edge.betweenness.community(g_backbone)$membership
 
-g_backbone = setNetworkAttributes(g_backbone, size_attribute=V(g_backbone)$freq, cluster_attribute=V(g_backbone)$cluster)
+g_backbone = setNetworkAttributes(g_backbone, size_attribute=V(g_backbone)$freq,
+  cluster_attribute=V(g_backbone)$cluster)
 
 plot(g_backbone)
 ```
 
 Now we have a more focused and informational visualization. We can for instance see several clusters that represent important talking points, such as the health care debate and the issue of nuclear weapons. Also, we see that America is at the center of discussions, in particular in context of economy and the job market.
+
+# Extracting Quantitative Information from networks
+
+## Computing network metrics
+
+The igraph package contains numerous functions for computing network statistics.
+For example, this code computes the degree centrality (links per node) for the original semantic network:
+
+```{r}
+c = centralization.degree(g)
+degree = data.frame(node=V(g)$name, degree=c$res)
+head(arrange(degree, -degree))
+```
+
+Or you can get the most central nodes in the backgone network (using betweenness centrality)
+
+```{r}
+c = centralization.betweenness(g_backbone)
+centrality = data.frame(node=V(g_backbone)$name, centrality=c$res)
+head(arrange(centrality, -centrality))
+```
+
+## Extracting relations 
+
+If we want to do more quantitative anlaysis of the network it can be useful to extract all relations as a data frame:
+
+```{r}
+edges = as_data_frame(g, what="edges")
+head(edges)
+```
+
+The most frequent edges are also good candidates for collocation:
+
+```{r}
+edges = arrange(edges, -weight)
+head(edges)
+```
+
+## Extraecting co-occurrences per document
+
+If you want to see in which documents an edge is contained, for example to add a time dimension to the network or to compare sources,
+you can set `output.per.context=T` in the original call.
+Since this will take a lot longer to run and generate a lot of output, we limit here to a sample of 10 paragraphs from Obama's speeches:
+
+```{r}
+smp = sample(sotu.meta$id[sotu.meta$headline == "Barack Obama"], 10)
+edges = with(sotu.tokens[sotu.tokens$aid %in% smp, ],
+  windowedCoOccurenceNetwork(location=id, term=lemma, context=aid,
+                      window.size=20, output.per.context = T))
+head(edges)
+```
+
+# Semnet for sentiment anlaysis
+
+We can also use the word-windo approach for sentiment analysis.
+Suppose we would want to get the sentiment in phrases around 'Iraq' and 'terror'.
+First, we need to load a sentiment dictionary and for this exercise we will use a list to store the dictionary:
+
+```{r}
+lexicon = readRDS("data/lexicon.rds")
+dictionary = list(
+  pos = lexicon$word1[lexicon$priorpolarity == "positive"],
+  neg = lexicon$word1[lexicon$priorpolarity == "negative"],
+  iraq = c("Iraq", "Iraqi" ),
+  terror = c("terror", "terrorism", "terrorist"))
+```
+Now, we can use this to make a new 'concept' column that contains that concept and the sentiment values positive or negative
+
+```{r}
+data(sotu)
+sotu.tokens$concept = NA
+for (concept in names(dictionary)) {
+  sotu.tokens$concept[sotu.tokens$lemma %in% dictionary[[concept]]] = concept
+}
+table(sotu.tokens$concept)
+```
+
+We can use now get all windowed co-occurrences for these concepts using:
+
+```{r}
+hits = windowedCoOccurenceNetwork(location=sotu.tokens$id, term=sotu.tokens$concept, context=sotu.tokens$aid,
+                    window.size=20, output.per.context = T)
+head(hits)
+```
+
+Now, we can compute a sentiment score and get the mean sentiment per context, excluding pos and neg itself:
+
+```{r}
+hits$sentiment[hits$y == "pos"] = 1
+hits$sentiment[hits$y == "neg"] = -1
+hits = hits[!(hits$x %in% c("pos", "neg")), ]
+library(reshape2)
+sent = dcast(hits, context ~ x, value.var="sentiment", fun.aggregate = mean)
+head(sent)
+```
+
+Finally, let's merge that back with the metadata to get sentiment about Iraq and teror per president:
+
+```{r}
+sent = merge(sotu.meta, sent, by.x="id", by.y="context")
+aggregate(sent[c("iraq", "terror")], sent["headline"], mean, na.rm=T)
+```
+
+So, both presidents are positive about (their policy in) Iraq, but while Bush is negative about terror, 
+Obama is actually positive (presumably mostly talking about his efforts to contain it).
