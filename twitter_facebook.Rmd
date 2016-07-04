@@ -1,8 +1,8 @@
 ---
+title: "Using API's from R: Twitter, Facebook, NY Times"
+author: "Wouter van Atteveldt"
 output: pdf_document
 ---
-Using API's from R: Twitter, Facebook, and NY Times
-========================
 
 ```{r, echo=F}
 head = function(...) knitr::kable(utils::head(...))
