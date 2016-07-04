@@ -18,11 +18,11 @@ General Howto's
 (see also this short [overview of useful R functions](functions.md))
 
 - Getting started
-  - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/1_r_calculator.Rmd))
-  - [playing with data in R](https://rawgit.com/vanatteveldt/learningr/master/2_playing.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/2_playing.Rmd))
+  - [using R as a calculator](https://rawgit.com/vanatteveldt/learningr/master/1_r_calculator.pdf) ([source](https://github.com/vanatteveldt/learningr/blob/master/1_r_calculator.Rmd))
+  - [playing with data in R](https://rawgit.com/vanatteveldt/learningr/master/2_playing.pdf) ([source](https://github.com/vanatteveldt/learningr/blob/master/2_playing.Rmd))
 - Data preparation
-  - [Organizing data](https://rawgit.com/vanatteveldt/learningr/master/3_organizing.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/3_organizing.Rmd))
-  - [Transforming and merging data](https://rawgit.com/vanatteveldt/learningr/master/4_transforming.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/4_transforming.Rmd))
+  - [Organizing data](https://rawgit.com/vanatteveldt/learningr/master/3_organizing.pdf) ([source](https://github.com/vanatteveldt/learningr/blob/master/3_organizing.Rmd))
+  - [Transforming and merging data](https://rawgit.com/vanatteveldt/learningr/master/4_transforming.pdf) ([source](https://github.com/vanatteveldt/learningr/blob/master/4_transforming.Rmd))
 - Data analysis
   - [Plotting your data](https://rawgit.com/vanatteveldt/learningr/master/6_visualization.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/6_visualization.Rmd))
   - [Data modeling: T-tests to linear models](https://rawgit.com/vanatteveldt/learningr/master/5_modeling.html) ([source](https://github.com/vanatteveldt/learningr/blob/master/5_modeling.Rmd))
