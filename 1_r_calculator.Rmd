@@ -1,6 +1,6 @@
-```{r, echo=FALSE}
-cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
-```
+---
+output: pdf_document
+---
 
 Prelude: R as a calculator
 ====
