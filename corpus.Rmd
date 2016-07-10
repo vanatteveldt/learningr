@@ -117,8 +117,6 @@ head(tokens)
 ```
 
 And we can see that e.g. for "is" the lemma "be" is given. 
-Note that the words are not in order, and the two occurrences of "is" are automatically summed. 
-This can be switched off by giving `drop=NULL` as extra argument.
 
 For a more serious application, we will use an existing article set: [set 16017](https://amcat.nl/navigator/projects/559/articlesets/16017/) in project 559, which contains the state of the Union speeches by Bush and Obama (each document is a single paragraph)
 

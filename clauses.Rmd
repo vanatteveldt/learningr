@@ -1,6 +1,6 @@
 ---
 title: "Clause analysis"
-output: html_document
+output: pdf_document
 ---
 
 In clause analysis, the grammatical structure of text is used to analyse 'who did what to whom (according to whom)', 
@@ -9,7 +9,7 @@ From a users point of view, clause analysis is called in AmCAT similar to other 
 
 ```{r, message=FALSE}
 library(amcatr)
-conn = amcat.connect("http://preview.amcat.nl")
+conn = amcat.connect("https://amcat.nl")
 sentence = "Mary told me that John loves her more than anything"
 t = amcat.gettokens(conn, sentence=as.character(sentence), module="clauses_en")
 t

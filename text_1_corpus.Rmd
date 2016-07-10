@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 Corpus analysis: the document-term matrix
 =========================================
 
