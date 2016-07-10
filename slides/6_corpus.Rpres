@@ -1,0 +1,166 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+ 
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Comparing and clustering corpora
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+
+Friday: Corpus Analysis & Topic Modeling
++ Querying Text with AmCAT & R
++ The Document-Term matrix
++ *Comparing Corpora*
++ Topic Modeling
+
+Comparing Corpora
+====
+
++ Constrasts more informative than frequencies
++ Compare speakers, media, periods, ...
++ `corpustools::corpora.compare`
+
+Obama's speeches
+====
+
+```{r}
+library(corpustools)
+data(sotu)
+obama = sotu.meta$id[sotu.meta$headline == "Barack Obama"]
+dtm_o = with(subset(sotu.tokens, aid %in% obama & pos1 %in% c("N", "A", "M")),
+           dtm.create(aid, lemma))
+dtm.wordcloud(dtm_o)
+```
+
+Comparing Corpora
+===
+```{r}
+dtm_b = with(subset(sotu.tokens, !(aid %in% obama) & pos1 %in% c("N", "A", "M")),
+           dtm.create(aid, lemma))
+cmp  = corpora.compare(dtm_o, dtm_b)
+cmp = arrange(cmp, -chi)
+kable(head(cmp))
+```
+
+Contrast plots
+===
+```{r}
+with(head(cmp, 100),
+plotWords(x=log(over), words = term, wordfreq = chi, random.y = T))
+```
+
+Comparing multiple corpora
+====
+
++ Requires subcorpus variable
++ Align meta to dtm
+
+```{r}
+head(rownames(dtm_o))
+meta = sotu.meta[match(rownames(dtm_o), sotu.meta$id), ]
+meta$year = format(meta$date, "%Y")
+kable(head(meta))
+```
+
+Comparing multiple corpora
+===
+
+```{r,message=F}
+d = corpora.compare.list(dtm_o, as.character(meta$year), return.df=T, .progress="none")
+d = arrange(d,-chi)
+kable(head(d))
+```
+
+Topic Modeling
+====
+type: section
+
+
+Topic Modeling
+====
+
++ Cluster words and documents
++ Comparable to factor analysis of DTM
++ Latent Dirichlet Allocation
+  + Generative model
+  + Writer picks mix of topics
+    + Each topic is mix of words
+  + Writer picks words from topics
++ Many advanced versions exist
+  + Structural topic models
+  + Hierarchical topic models
+  
+Topic Modeling in R
+====
+
+```{r}
+library(corpustools)
+set.seed(123)
+m = lda.fit(dtm_o, K = 5, alpha = .1)
+kable(terms(m, 10))
+```
+
+Visualizing LDA
+====
+
+```{r, eval=F}
+library(LDAvis)
+json = ldavis_json(m, dtm_o)
+serVis(json)
+```
+
+How many topics?
+====
+
++ Inspect result
+  + Mixed topics? increase K
+  + Very similar topics? decrease K
++ Perplexity measure for different K  
+  + Scree plot
++ Jacobi, Van Atteveldt & Welbers (2016)
++ (there will always be junk topics)
+
+Perplexity
+===
+
+```{r}
+p = readRDS("perplex.rds")
+p = aggregate(p["p"], p["k"], mean)
+library(ggplot2)
+ggplot(p, aes(x=k, y=p, )) + geom_line()  +geom_point()
+```
+
+Analyzing LDA results
+===
+
+```{r}
+tpd = topics.per.document(m)
+tpd = merge(sotu.meta, tpd)
+kable(head(tpd))
+```
+
+
+Hands-on session
+====
+type: section
+
+Handouts:
++ Comparing corpora
++ LDA Topic Modeling

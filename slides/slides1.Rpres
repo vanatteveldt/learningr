@@ -1,0 +1,319 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Session 1: Managing data in R
+
+Motivational Example
+========================================================
+
+
+```{r,echo=F, eval=F}
+load("~/learningr/api_auth.rda")
+twitteR::setup_twitter_oauth(tw_consumer_key, tw_consumer_secret, tw_token, tw_token_secret)
+tweets = searchTwitteR("#bigdata", resultType="recent", n = 100)
+saveRDS(tweets, file="ex_tweets.rds")
+```
+```{r, echo=F}
+tweets = readRDS("ex_tweets.rds")
+```
+
+```{r, eval=F}
+library(twitteR)
+tweets = searchTwitteR("#bigdata", resultType="recent", n = 100)
+tweets = plyr::ldply(tweets, as.data.frame)
+```
+
+```{r}
+kable(head(tweets[c("id", "created", "text")]))
+```
+
+Motivational Example
+======
+
+```{r}
+library(RTextTools)
+library(corpustools)
+dtm = create_matrix(tweets$text)
+dtm.wordcloud(dtm, freq.fun = sqrt)
+```
+
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+  + *Intro & Organizing data*
+  + Transforming data
+  + Accessing APIs from R
+
+Friday: Corpus Analysis & Topic Modeling
+
+Saturday: Machine Learning & Sentiment Analysis
+
+Sunday: Semantic Networks & Grammatical Analysis
+
+Introduction
+===
+
++ Please introduce yourself
+  + Background
+  + What do you want to learn?
+  + Experience with R / text / programming
+
+
+Course Components
+===
+
++ Each 3h session: 
++ Lecture & Interactive sessions
+  + Please interrupt me!
++ Break
++ Hands-on sessions
++ http://vanatteveldt.com
+  + Slides, hand-outs, data
+
+What is R?
+===
+
++ Programming language
++ Statistics Toolkit
++ Open Source
++ Community driven
+  + Packages/libraries
+  + Including many text analysis libraries
+  
+Cathedral and Bazar
+===
+
+<img src="cath_bazar.jpg">
+  
+The R Ecosystem
+===
+
++ R
++ RStudio
+  + RMarkdown / RPresentation
++ Packages
+  + CRAN
+  + Github
+
+
+Interactive 1a: What is R?
+====
+type: section
+
+Installing and using packages
+===
+
+```{r, eval=F}
+install.packages("plyr")
+library(plyr)
+plyr::rename
+
+devtools::install_github("amcat/amcat-r")
+```
+
+Data types: vectors
+===
+
+```{r}
+x = 12
+class(x)
+x = c(1, 2, 3)
+class(x)
+x = "a text"
+class(x)
+```
+
+Data Frames
+===
+
+```{r}
+df = data.frame(id=1:3, age=c(14, 18, 24), 
+          name=c("Mary", "John", "Luke"))
+df
+class(df)
+```
+
+Selecting a column
+===
+
+```{r}
+df$age
+df[["age"]]
+class(df$age)
+class(df$name)
+```
+
+Useful functions
+===
+
+Data frames:
+
+```{r, eval=F}
+colnames(df)
+head(df)
+tail(df)
+nrow(df)
+ncol(df)
+summary(df)
+```
+
+Vectors:
+
+```{r, eval=F}
+mean(df$age)
+length(df$age)
+```
+
+
+Other data types
+===
+
++ Data frame:
+  + Rectangular data frame
+  + Columns vectors of same length
+    + (vetor always has one type)
++ List:
+  + Contain anything (inc data frames, lists)
+  + Elements arbitrary type
++ Matrix:
+  + Rectangular
+  + All cells same (primitive) type
+  
+  
+Finding help (and packages)
+===
+
++ Built-in documentation
+  + CRAN package vignettes
++ Task views
++ Google (sorry...)
+  + r mailing list
+  + stack exchange
+  
+Organizing Data in R
+===
+type: section
+  
+
+Subsetting
+
+Recoding & Renaming columns
+
+Ordering
+
+
+
+Subsetting
+===
+
+```{r}
+df[1:2, 1:2]
+df[df$id %% 2 == 1, ]
+df[, c("id", "name")]
+```
+
+Subsetting: `subset` function
+===
+```{r}
+subset(df, id == 1)
+subset(df, id >1 & age < 20)
+```
+
+Recoding columns
+===
+  
+```{r}
+df2 = df
+df2$age2 = df2$age + df2$id
+df2$age[df2$id == 1] = NA
+df2$id = NULL
+df2$old = df2$age > 20
+df2$agecat = 
+  ifelse(df2$age > 20, "Old", "Young")
+df2
+```
+
+Text columns
+===
+
++ `character` vs `factor`
+
+```{r}
+df2=df
+df2$name = as.character(df2$name)
+df2$name[df2$id != 1] = 
+    paste("Mr.", df2$name[df2$id != 1])
+df2$name = toupper(df2$name)
+df2$name = gsub("\\.\\s*", "_", df2$name)
+df2[grepl("mr", df2$name, ignore.case = T), ]
+```
+
+Renaming columns
+===
+
+```{r}
+df2 = df
+colnames(df2) = c("ID", "AGE", "NAME")
+colnames(df2)[2] = "leeftijd"
+df2 = plyr::rename(df2, c("NAME"="naam"))
+df2
+```
+  
+Ordering
+====
+
+```{r}
+df[order(df$age), ]
+plyr::arrange(df, -age)
+```
+
+Accessing elements
+====
+
++ Data frame
+  + Select one column: `df$col`, ` df[["col"]]`, 
+  + Select columns: `df[c("col1" ,"col2")]`
+  + Subset: `df[rows, columns]`
++ List:
+  + Select one element: `l$el`, ` l[["el"]]`, `l[[1]]` 
+  + Select columns: `l[[1:3]]`
++ Matrix:
+  + All cells same type
+  + Subset: `m[rows, columns]`
+
+Interactive 1b
+====
+type: section
+
+Organizing Data
+
+Hands-on 1
+====
+type: section
+
+Break
+
+Hand-outs:
++ Playing with data
++ Organizing data
++ Play with your own data!
+

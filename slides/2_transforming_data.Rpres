@@ -1,0 +1,156 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Transforming Data
+
+Transforming data
+====
+type:section
+
+Combining data
+
+Reshaping data
+
+Combining data
+=====
+
+```{r, echo=F}
+df = data.frame(id=1:3, age=c(14, 18, 24), 
+          name=c("Mary", "John", "Luke"))
+```
+
+```{r}
+cbind(df, country=c("nl", "uk", "uk"))
+rbind(df, c(id=1, age=2, name="Mary"))
+```
+
+Merging data
+===
+
+```{r}
+countries = data.frame(id=1:2, country=c("nl", "uk"))
+merge(df, countries)
+merge(df, countries, all=T)
+```
+
+Merging data
+===
+
+```{r, eval=F}
+merge(data1, data2)
+merge(data1, data2, by="id")
+merge(data1, data2, by.x="id", by.y="ID")
+merge(data1, data2, by="id", all=T)
+merge(data1, data2, by="id", all.x=T)
+```
+
+Reshaping data
+===
+
++ `reshape2` package:
+  + `melt`: wide to long
+  + `dcast`: long to wide (pivot table) 
+
+Melting data
+===
+
+```{r}
+wide = data.frame(id=1:3, 
+  group=c("a","a","b"), 
+  width=c(100, 110, 120), 
+  height=c(50, 100, 150))
+wide
+```
+
+Melting data
+===
+
+```{r}
+library(reshape2)
+long = melt(wide, id.vars=c("id", "group"))
+long
+```
+
+
+Casting data
+===
+
+```{r}
+dcast(long, id + group ~ variable, value.var="value")
+```
+
+Casting data: aggregation
+===
+
+```{r}
+dcast(long, group ~ variable, value.var = "value", fun.aggregate = max)
+dcast(long, id ~., value.var = "value", fun.aggregate = mean)
+```
+
+Aggregation with `aggregate`
+===
+
+```{r}
+aggregate(long["value"], long["group"], max)
+```
+
+`aggregate` vs `dcast`
+===
+
+Aggregate
++ One aggregation function
++ Multiple value columns
++ Groups go in rows (long format)
++ Specify with column subsets
+
+Cast
++ One aggregation function
++ One value column
++ Groups go in rows or columns
++ Specify with formula (`rows ~ columns`)
+
+
+Simple statistics
+===
+
+Vector properties
+
+```{r, eval=F}
+mean(x)
+sd(x)
+sum(x)
+```
+
+Basic tests
+
+```{r, eval=F}
+t.test(wide, width ~ group)
+t.test(wide$width, wide$height, paired=T)
+cor.test(wide$width, wide$height)
+m = lm(long, width ~ group + height)
+summary(m)
+```
+
+
+
+Hands-on
+====
+type: section
+
+Handout: Transforming Data

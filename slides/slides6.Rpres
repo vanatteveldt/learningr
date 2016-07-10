@@ -1,0 +1,207 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Session 6: Semantic Networks and Visualization
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+
+Friday: Corpus Analysis & Topic Modeling
+
+Saturday:
+ + Sentiment Analysis
+ + Machine Learning
+
+Sunday:
+ + *Basic visualization*
+ + Semantic Network Analysis
+
+
+Visualizing with `plot`
+====
+
++ plot(.) plots data depending on object:
+
+```{r, eval=F}
+plot(x=.., y=..)
+plot(lm(d$y ~ d$x))
+plot(d$y~d$x)
+plot(d)
+```
+
+Adding to a plot
+===
+
++ Plot starts a new plot
++ Add extra lines, points etc:
+
+```{r, eval=F}
+lines(x, y)
+abline(v=v)
+abline(lm(..))
+legend(..)
+title(..)
+axis(..)
+```
+
++ Start with basic/empty plot, add elements
+
+Package ggplot
+===
+
+ggplot plots are composed of layers:
++ Mapping of data to aesthetics
+  + x, y, colour, ..
++ geometry layers (line, point)
++ Add layers with `+`:
+
+```{r, eval=F}
+ggplot(data, aes(.)) + geom_line(.) + ...
+```
++ Layers 'inherit' data and mappings from base
+  + You can override (e.g. different y, colour, etc)
+  
+Interactive plots
+====
+
++ googleVis: interactive plots using Google's API
++ rcharts: interactive plots with d3js
+  + http://rcharts.io/gallery/
++ dygraphs: interactive time series
+
++ See also: http://www.r-graph-gallery.com/
+
+
+Interactive Session 6a
+===
+type:section 
+
+Visualization with R
+
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+
+Friday: Corpus Analysis & Topic Modeling
+
+Saturday:
+ + Sentiment Analysis
+ + Machine Learning
+
+Sunday:
+ + Basic visualization
+ + *Semantic Network Analysis*
+
+
+Semantic Network Analysis
+===
+
++ Co-occurrence of concepts as semantic relation
++ Possibly limited to word-window
++ Useful to limit to e.g. nouns or noun+verbs
++ See e.g. Doerfel/Barnett 1999, Diesner 2013, Leydesdorff/Welbers 2011
+
+Semantic Network Analysis in R
+===
+
++ Package `semnet`
+  + `github.com/kasperwelbers/semnet`
++ Input dtm or token list, output graph
+
+```{r, eval=F}
+library(semnet)
+g = coOccurenceNetwork(dtm) 
+
+g = windowedCoOccurenceNetwork(location, term, context)
+```
+
+Graphs in R
+===
+
++ Package `igraph`
++ Edges and Vertices
++ Set attrbiutes with `E(g)$label`, etc
++ Functions for clustering, centrality, plotting, etc.
+
+Backbone extraction
+===
+
++ Semantic networks are very large
++ Backbone extraction extracts most important edges
+
+```{r, eval=F}
+g_backbone = getBackboneNetwork(g, alpha=0.01, max.vertices=100)
+```
+
+Exporting graphs
+===
+
++ Export to e.g. UCInet, gephi
++ More visualization, metrics
+
+```{r, eval=F}
+write.graph(g, filename, format)
+
+library(rgexf)
+gefx = igraph.to.gexf(g)
+print(gefx, file="..")
+```
+
+Semnet for Sentiment Analysis
+===
+
++ Sentiment around specific terms
++ Windowed co-occurrence of sentiment terms, concepts
++ More specific approach using syntax: Van Atteveldt et al., forthcoming
+
+
+Interactive Session 6b
+===
+type:section 
+
+Semantic Network Analysis
+
+Hands-on session 6
+===
+type: section
+
+Break
+
+Hand-outs: 
++ Visualization
++ Semantic Network Analysis
+
+Thank You!
+===
+type: section
+
+What you have learned:
++ Data management with R
++ Corpus Analysis
++ Topic Modeling
++ Sentiment Analysis
++ Text Classification
++ Semantic Network Analysis
+
+Go out and code!

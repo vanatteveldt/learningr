@@ -1,0 +1,273 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%; 
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Session 3: Querying and analysing text
+
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+
+Friday: Corpus Analysis & Topic Modeling
++ *Querying Text with AmCAT & R*
++ The Document-Term matrix
++ Comparing Corpora
++ Topic Modeling
+
+Saturday: Machine Learning & Sentiment Analysis
+
+Sunday: Semantic Networks & Grammatical Analysis
+
+What is AmCAT
+====
+
++ Open source text analysis platform
+  + Queries, manual annotation
+  + API
+  + (Working on R plugins...) 
++ Developed at VU Amsterdam
++ Free account at `http://amcat.nl` 
+  + (or install on your own server)
+
+AmCAT and R
+====
+
++ AmCAT for
+  + Organizing large corpora
+  + Central storage and access control
+  + Fast search with elastic
+  + Linguistic processing with `nlpipe`
++ R for flexible analysis
+  + Corpus Analysis
+  + Semantic netwok analysis
+  + Visualizations
+  + Reproducability
+
+Demo: AmCAT
+======
+type:section
+
+
+Connecting to AmCAT from R
+====
+
++ AmCAT API 
+  + (Create account at `https://amcat.nl`)
+
+```{r, eval=F}
+install_github("amcat/amcat-r")
+amcat.save.password("https://amcat.nl", "user", "pwd")
+```
+```{r}
+library(amcatr)
+conn = amcat.connect("https://amcat.nl")
+```
+
+Querying AmCAT: aggregation
+====
+
+```{r}
+a = amcat.aggregate(conn, "mortgage*", sets=29454, axis1 = "year", axis2="medium") 
+head(a)
+```
+
+Querying AmCAT: raw counts
+====
+
+```{r}
+h = amcat.hits(conn, "mortgage*", sets=29454)
+head(h)
+```
+
+Merging with metadata
+=====
+
+```{r}
+meta = amcat.getarticlemeta(conn, 41, 29454, dateparts = T)
+h = merge(meta, h)
+peryear = aggregate(h["count"], h[c("year")], sum)
+library(ggplot2)
+ggplot(peryear, aes(x=year, y=count)) + geom_line()
+```
+
+
+Uploading text to AmCAT
+===
+
+```{r, echo=F, results='hide'}
+library(twitteR)
+load("~/learningr/api_auth.rda")
+setup_twitter_oauth(tw_consumer_key, tw_consumer_secret, tw_token, tw_token_secret)
+```
+
+```{r}
+tweets = searchTwitteR("#bigdata", resultType="recent", n = 100)
+tweets = plyr::ldply(tweets, as.data.frame)
+set = amcat.upload.articles(conn, project=1, 
+  articleset="twitter test", medium="twitter",
+  text=tweets$text, headline=tweets$text, 
+  date=tweets$created, author=tweets$screenName)
+head(amcat.getarticlemeta(conn, 1, set, columns=c('date', 'headline')))
+```
+
+Saving selection as article set
+===
+
+```{r}
+h = amcat.hits(conn, "data*", sets=set)
+set2 = amcat.add.articles.to.set(conn, project=1, articles=h$id,
+  articleset.name="Visualization", articleset.provenance="From R")
+head(amcat.getarticlemeta(conn, 1, set2, columns=c('date', 'headline')))
+```
+
+Interactive session 3a
+====
+type: section
+
+Connecting to AmCAT
+
+
+
+Course Overview
+===
+type:section 
+
+Thursday: Introduction to R
+
+Friday: Corpus Analysis & Topic Modeling
++ Querying Text with AmCAT & R
++ *The Document-Term matrix*
++ Comparing Corpora
++ Topic Modeling
+
+Saturday: Machine Learning & Sentiment Analysis
+
+Sunday: Semantic Networks & Grammatical Analysis
+
+Document-Term Matrix
+===
+
++ Representation word frequencies
+  + Rows: Documents
+  + Columns: Terms (words)
+  + Cells: Frequency
++ Stored as 'sparse' matrix
+  + only non-zero values are stored
+  + Usually, >99% of cells are zero
+  
+Docment-Term Matrix
+===
+
+```{r}
+library(RTextTools)
+m = create_matrix(c("I love data", "John loves data!"))
+as.matrix(m)
+```
+
+Simple corpus analysis
+===
+
+```{r}
+library(corpustools)
+head(term.statistics(m))
+```
+
+Preprocessing 
+===
+
++ Lot of noise in text:
+  + Stop words (the, a, I, will)
+  + Conjugations (love, loves)
+  + Non-word terms (33$, !)
++ Simple preprocessing, e.g. in `RTextTools`
+  + stemming
+  + stop word removal
+
+Linguistic Preprocessing
+====
+
++ Lemmatizing
++ Part-of-Speech tagging
++ Coreference resolution
++ Disambiguation
++ Syntactic parsing  
+  
+Tokens
+====
+
++ One word per line (CONLL)
++ Linguistic information 
+
+```{r}
+data(sotu)
+head(sotu.tokens)
+```
+
+Getting tokens from AmCAT
+===
+
+```{r, eval=F}
+tokens = amcat.gettokens(conn, project=1, articleset=set)
+tokens = amcat.gettokens(conn, project=1, articleset=set, module="corenlp_lemmatize")
+```
+
+DTM from Tokens
+===
+
+```{r}
+dtm = with(subset(sotu.tokens, pos1=="M"),
+           dtm.create(aid, lemma))
+dtm.wordcloud(dtm)
+```
+
+Corpus Statistics
+===
+```{r}
+stats = term.statistics(dtm)
+stats= arrange(stats, -termfreq)
+head(stats)
+```
+
+Interactive session 3b
+====
+type: section
+
+Corpus Analysis
+
+
+Hands-on session 3
+====
+type: section
+
+Break
+
+Handouts:
++ Text anlaysis with R and AmCAT
++ Corpus Analysis
+
+Mini-project:
++ Upload your data to AmCAT, query,
++ Create a DTM, view term statistics, wordcloud
+
+
+

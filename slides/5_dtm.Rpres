@@ -1,0 +1,113 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%; 
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Corpus Analysis: The Document-term Matrix
+
+
+Document-Term Matrix
+===
+
++ Representation word frequencies
+  + Rows: Documents
+  + Columns: Terms (words)
+  + Cells: Frequency
++ Stored as 'sparse' matrix
+  + only non-zero values are stored
+  + Usually, >99% of cells are zero
+  
+Docment-Term Matrix
+===
+
+```{r}
+library(RTextTools)
+m = create_matrix(c("I love data", "John loves data!"))
+as.matrix(m)
+```
+
+Simple corpus analysis
+===
+
+```{r}
+library(corpustools)
+head(term.statistics(m))
+```
+
+Preprocessing 
+===
+
++ Lot of noise in text:
+  + Stop words (the, a, I, will)
+  + Conjugations (love, loves)
+  + Non-word terms (33$, !)
++ Simple preprocessing, e.g. in `RTextTools`
+  + stemming
+  + stop word removal
+
+Linguistic Preprocessing
+====
+
++ Lemmatizing
++ Part-of-Speech tagging
++ Coreference resolution
++ Disambiguation
++ Syntactic parsing  
+  
+Tokens
+====
+
++ One word per line (CONLL)
++ Linguistic information 
+
+```{r}
+data(sotu)
+head(sotu.tokens)
+```
+
+Getting tokens from AmCAT
+===
+
+```{r, eval=F}
+tokens = amcat.gettokens(conn, project=1, articleset=set)
+tokens = amcat.gettokens(conn, project=1, articleset=set, module="corenlp_lemmatize")
+```
+
+DTM from Tokens
+===
+
+```{r}
+dtm = with(subset(sotu.tokens, pos1=="M"),
+           dtm.create(aid, lemma))
+dtm.wordcloud(dtm)
+```
+
+Corpus Statistics
+===
+```{r}
+stats = term.statistics(dtm)
+stats= arrange(stats, -termfreq)
+head(stats)
+```
+
+Hands-on
+====
+type: section
+
+Handouts: Corpus Analysis
