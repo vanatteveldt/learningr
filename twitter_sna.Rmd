@@ -1,0 +1,240 @@
+---
+title: "Extracting Social & Semantic Networks from Twitter"
+author: "Wouter van Atteveldt"
+date: "June 29, 2016"
+output: pdf_document
+---
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+load("data/tweets.rda")
+```
+
+Installing packages
+---
+
+This handout uses the following packages, which you will need to install if you haven't already:
+
+```{r, eval=F}
+install.packages("devtools")
+install.packages("RTextTools")
+devtools::install_github("kasperwelbers/corpus-tools")
+devtools::install_github("kasperwelbers/semnet")
+```
+
+Downloading Tweets
+---
+
+Note that you need to setup OAuth first, see the handout on "Using API's from R"
+
+Let's download tweets from UK MP's before and after the brexit referendum:
+
+```{r, eval=F}
+library(twitteR)
+mptweets_after = searchTwitter("list:Tweetminster/UKMPs", n=2000, since="2016-06-23", until="2016-06-25")
+mptweets_before = searchTwitter("list:Tweetminster/UKMPs", n=2000, until="2016-06-22", since="2016-06-15")
+mptweets_after = plyr::ldply(mptweets_after, as.data.frame)
+mptweets_before = plyr::ldply(mptweets_before, as.data.frame)
+```
+
+
+Constructing DTM
+----
+
+The first step in frequency based analysis is to create a document-term matrix,
+containing the frequency of each word in each document (tweet).
+
+We use the `create_matrix` function from the `RTextTools` package.
+This can strip punctuation etc. automatically, but since we want to preserve #hashtags and @mentions
+but strip hyperlinks, we need to do some custom processing:
+
+
+```{r, message=F}
+library(RTextTools)
+tweets = rbind(mptweets_after, mptweets_before)
+text = gsub("https://.*?( |$)", " ", tweets$text)
+text = gsub("[^A-Za-z0-9#@_]+", " ", text)
+dtm = create_matrix(text, removePunctuation = F)
+rownames(dtm) = tweets$id
+```
+
+From this DTM we can create subsets using the regular matrix/data frame subsetting syntax (`dtm[rows, columns]`).
+For example, we can create a DTM with only the hash tags and visualize that as a tag cloud:
+
+```{r, warning=F, message=F}
+library(corpustools)
+dtm.hash = dtm[, grepl("#", colnames(dtm))]
+dtm.wordcloud(dtm.hash, freq.fun = sqrt)
+```
+
+We can use the `term.statistics` command to get frequency information from a corpus, 
+for example to get an overview of the most frequent hash tags:
+
+```{r, warning=F, message=F}
+stats = term.statistics(dtm.hash)
+stats = arrange(stats, -termfreq)
+head(stats)
+```
+
+\newpage
+
+# Comparing Corpora
+
+A useful way to get more useful information from a corpus is by comparing different subsets of it,
+for example from different sources, periods, or split on a specific keyword.
+In this example, we can compare the 'before' and 'after' tweets to see how hash tag use changed.
+To show the most typical 'before' tags, we take the 'after' tweets as selected corpus 
+and sort on ascending overrepresentation (so the most underrepresented words are displayed first).
+
+```{r}
+cmp = corpora.compare(dtm.hash, select.rows = as.character(mptweets_after$id))
+cmp = arrange(cmp, over)
+head(cmp)
+```
+
+We can also display this information in a contrast plot,
+showing the most typical 'before' tags to the left, and the 'after' tags to the right:
+
+```{r, warning=F}
+with(arrange(cmp, -chi)[1:100, ],
+     plotWords(x=log(over), words = term, wordfreq = chi, random.y = T))
+```
+
+# Constructing a social network
+
+To create the 'who mentions who' network, we select only the @-words from the DTM,
+and then extract the tweet-mention pairs. 
+By adding (and normalizing) the screen name of the tweet author as sender
+and stripping the at-sign from the addressee, we have  data frame of sender-addressee pairs:
+
+```{r}
+dtm.ats = dtm[, grepl("@", colnames(dtm))]
+mentions = dtm.to.df(dtm.ats)
+mentions$sender = tolower(tweets$screenName[match(mentions$doc, tweets$id)])
+mentions$addressee = gsub("@", "", mentions$term)
+head(mentions)
+```
+
+We can aggregate this to see who mentions whom, and remove all self-references and references to non-MPs:
+
+```{r}
+edges = aggregate(cbind(weight=mentions$freq), mentions[c("sender", "addressee")], sum)
+edges = edges[edges$addressee %in% edges$sender, ]
+edges = edges[edges$addressee != edges$sender, ]
+head(edges)
+```
+
+Now, we can create an `igraph` object from the edge list:
+
+```{r}
+g = igraph::graph.data.frame(edges)
+vcount(g)
+```
+
+So we now have a social network with 210 vertices (MPs), and we can use that to e.g. select the most
+central MP (using betweenness centrality):
+
+```{r}
+head(sort(betweenness(g), decreasing = T))
+```
+
+To visualize this network, we first select only the largest component, apply clustering, and then use the built-in plot function:
+
+```{r, message=F}
+library(semnet)
+g = decompose(g, max.comps=1, min.vertices=10)[[1]]
+V(g)$cluster = edge.betweenness.community(g)$membership
+g = setNetworkAttributes(g, cluster_attribute=V(g)$cluster)
+plot(g)
+```
+
+# Constructing a semantic network
+
+To construct a semantic network of all co-occuring words, we can use the `coOccurenceNetwork` function
+from the `semnet` package:
+
+```{r}
+dtm.words = dtm[,!grepl("[#@]", colnames(dtm))]
+g = coOccurenceNetwork(dtm.words)
+vcount(g)
+```
+
+This network is too large to display directly, but we can extract the backbone of the 50 most important words
+and then select the largest component:
+
+```{r, warning=F, message=F}
+g = getBackboneNetwork(g, max.vertices = 50)
+g = decompose(g, max.comps=1, min.vertices=10)[[1]]
+vcount(g)
+```
+
+Now, we can cluster the graph and plot it:
+
+```{r, warning=F, message=F}
+V(g)$cluster = edge.betweenness.community(g)$membership
+g = setNetworkAttributes(g, cluster_attribute=V(g)$cluster)
+plot(g)
+```
+
+As you can see, you would probably want to apply more preprocessing, e.g. removing stopwords, lemmatizing/stemming,
+selecting only certain parts-of-speech, and/or applying dictionaries or thesauri.
+
+With tweets, one thing we can also do is limit ourselves to the semantic network of hash tags:
+
+```{r, warning=F, message=F}
+before = mptweets_before$id
+dtm.tags = dtm[rownames(dtm) %in% before, grepl("#", colnames(dtm))]
+g = coOccurenceNetwork(dtm.tags)
+g = decompose(g, max.comps=1, min.vertices=10)[[1]]
+V(g)$cluster = edge.betweenness.community(g)$membership
+g = setNetworkAttributes(g, cluster_attribute=V(g)$cluster)
+plot(g)
+```
+
+\newpage
+
+# Combining the social and semantic networks
+
+As a final example, we can create a network that combines the social network (who mentions whom)
+with the hash tag network (who uses which tags).
+
+To do this, we first create the edges for the sender -> tag networks:
+
+```{r, warning=F, message=F}
+dtm.tags = dtm.tags[row_sums(dtm.tags) > 0, col_sums(dtm.tags) > 0]
+tags = dtm.to.df(dtm.tags)
+tags$sender = tolower(tweets$screenName[match(tags$doc, tweets$id)])
+tags$addressee = gsub("@", "", tags$term)
+tagedges = aggregate(cbind(weight=tags$freq), tags[c("sender", "addressee")], sum)
+head(tagedges)
+```
+
+Now, we can combine these edges with the social network edges created above,
+and create a graph for all edges with weight >= 2:
+
+```{r, warning=F, message=F}
+g = igraph::graph.data.frame(subset(rbind(edges, tagedges), weight>=2))
+g = decompose(g, max.comps=1, min.vertices=10)[[1]]
+g = setNetworkAttributes(g, cluster_attribute=grepl("#", V(g)$name))
+plot(g)
+```
+
+
+\newpage
+
+# Exporting graphs
+
+You can export graphs to a number of formats using the `write.graph` function:
+
+```{r, eval=F}
+write.graph(g, file="graph.net", format="pajek")
+```
+
+This function does not support the gephi format, however.
+To export to gephi we use the rgexf package:
+
+```{r, eval=F}
+library(rgexf)
+gefx = igraph.to.gexf(g)
+print(gefx, file="graph.gefx")
+```

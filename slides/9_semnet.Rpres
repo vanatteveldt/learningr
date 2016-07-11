@@ -1,0 +1,95 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
+```
+
+
+
+Analysing Texts and Networks with R
+========================================================
+author: Wouter van Atteveldt
+date: Network Analysis
+
+
+
+(Social) Network analysis in R
+===
+
++ Package `igraph`
++ Edges and Vertices
++ Set attrbiutes with `E(g)$label`, etc
++ Functions for clustering, centrality, plotting, etc.
++ Exporting/Importing to/from gephi, pajek, UCInet etc.
+
+Semantic Network Analysis
+===
+
++ Co-occurrence of concepts as semantic relation
++ Possibly limited to word-window
++ Useful to limit to e.g. nouns or noun+verbs
++ See e.g. Doerfel/Barnett 1999, Diesner 2013, Leydesdorff/Welbers 2011
+
+Semantic Network Analysis in R
+===
+
++ Package `semnet`
+  + `github.com/kasperwelbers/semnet`
++ Input dtm or token list, output graph
+
+```{r, eval=F}
+library(semnet)
+g = coOccurenceNetwork(dtm) 
+
+g = windowedCoOccurenceNetwork(location, term, context)
+```
+
+Backbone extraction
+===
+
++ Semantic networks are very large
++ Backbone extraction extracts most important edges
+
+```{r, eval=F}
+g_backbone = getBackboneNetwork(g, alpha=0.01, max.vertices=100)
+```
+
+Exporting graphs
+===
+
++ Export to e.g. UCInet, gephi
++ More visualization, metrics
+
+```{r, eval=F}
+write.graph(g, filename, format)
+
+library(rgexf)
+gefx = igraph.to.gexf(g)
+print(gefx, file="..")
+```
+
+Semnet for Sentiment Analysis
+===
+
++ Sentiment around specific terms
++ Windowed co-occurrence of sentiment terms, concepts
++ More specific approach using syntax: Van Atteveldt et al., forthcoming
+
+Hands-on session 
+===
+type: section
+
+Hand-out: 
++ Semantic Network Analysis
++ Extracting Networks from Twitter

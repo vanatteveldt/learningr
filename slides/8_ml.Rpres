@@ -1,0 +1,135 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Machine Learning
+
+Machine Learning
+====
+
++ Statistical Modeling
+  + Dependent Variable: sentiment, topic, frame
+  + Independent Variables: words
++ Focus: prediction rather than explanation
+  + Millions of correlated independent variables
+  
+Text Classification
+===
+
++ Each text has a 'class'
++ Training documents to fit model
++ Test documents to gauge accuracy
+  + (or use cross-validation)
++ Choices:
+  + What features?
+  + Which model?
+  
+Text Classification: features
+===
+
++ Features: independent variables
++ Basic approach: each word is a feature
++ Other options e.g.
+  + Collocations (n-grams)
+  + LDA Topics
+  + Feature selection
+
+Text Classification: models
+===
+
++ Naive Bayes
++ Maximum Entropy
++ Support Vector Machines
++ Neural Networks
++ (deep learning)
+
+Combining models
+===
+
++ Ensemble Learning
+  + Train multiple models 
+  + Decide by vote
++ Active Learning
+  + Code limited amount of material
+  + Train+test model
+  + Code most difficult cases, repeat
+
+Text Classification in R
+===
+
++ Package RTextTools
+  + Jurka et al, 2013
++ Based on DTM plus coded classes
++ Does learning, evaluation, prediction
+
+Text Classification in R
+===
+
+(1) Create 'container' from DTM + coded classes
+
+```{r, eval=F}
+library(RTextToools)
+c = create_container(dtm, classes, 
+  trainSize=train, testSize=test, virgin=F)
+```
+(2) Train and test model
+
+```{r, eval=F}
+SVM <- train_model(c,"SVM")
+SVM_CLASSIFY <- classify_model(c, SVM)
+```
+
+(3) Evaluate
+
+```{r, eval=F}
+analytics <- create_analytics(c, SVM_CLASSIFY)
+```
+
+Code new material
+===
+
+```{r, eval=F}
+is_coded = !is.na(classes)
+c = create_container(dtm, classes, 
+  trainSize=is_coded, virgin=T)
+SVM <- train_model(c,"SVM")
+SVM_CLASSIFY <- classify_model(c, SVM)
+analytics <- create_analytics(c, SVM_CLASSIFY)
+head(analytics@document_summary)
+```
+
+Some links:
+===
+
++ Burscher et al 2014: Framing with SVM's
++ Purpura & Wilkerson 2007: Active Learning for Agenda Coding
+
++ Some online resources:
+  + http://www.r-bloggers.com/sentiment-analysis-on-donald-trump-using-r-and-tableau/
+  + https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html#lexicon
+  + http://datascienceplus.com/sentiment-analysis-with-machine-learning-in-r/
+  + https://sites.google.com/site/miningtwitter/questions/sentiment/sentiment
+
+
+Hands-on session
+====
+type: section
+
+Handouts:
++ (Sentiment Analysis Resources)
++ Machine Learning
+

@@ -1,0 +1,87 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+Text Analysis in R
+========================================================
+author: Wouter van Atteveldt
+date: Sentiment Analysis
+
+Sentiment Analysis
+====
+
++ What is the tone of a text?
++ Techniques (e.g. Pang/Lee 2008, Liu 2012)
+  + Manual coding
+  + Dictionaries
+  + Machine Learning
+  + Crowdsourcing (Benoit ea 2015)
+  
+Sentiment Analysis: problems
+====
+
+<em>"The man who leaked cell-phone coverage of Saddam Hussein's execution was arrested"</em>
+  
++ Language is subjective, ambiguous, creative
++ What does positive/negative mean?
+  + e.g. Osgood ea 1957: evaluation, potency, activity
++ Who is positive/negative about what?
+  + Sentiment Attribution
+
+Sentiment Analysis resources
+====
+
++ Lexicon (dictionary)
++ Annotated texts
++ Tools / models
+
+Interlude: Downloading and Parsing files
+===
+type: section
+
+Lexical Sentiment Analysis
+===
+
++ Get list of positive / negative terms
++ Count occurrences in text
++ Summarize to sentiment score
++ Possible improvements
+  + Word-window approach (tomorrow)
+  + Deal with negation, intensification
+
+Lexical Sentiment Analysis in R
+===
+
++ Nothing new here!
++ Directly count words in DTM:
+
+```{r, eval=F}
+library(slam)
+reviews$npos = row_sums(dtm[, colnames(dtm) %in% pos_words])
+```
+
++ Count words in token list:
+
+```{r, eval=F}
+tokens$sent[tokens$lemma %in% pos_words] = 1
+```
+
+Hands-on session
+====
+type:section
+
+Handouts:
++ Sentiment Analysis Resources
++ Lexcial Sentiment Analysis
+
