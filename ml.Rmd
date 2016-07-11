@@ -29,7 +29,7 @@ Obtaining data
 
 For this example, we will use Amazon reviews from http://jmcauley.ucsd.edu/data/amazon/ and classify whether they are positive or negative.
 See the hand-out 'Getting Sentiment Resources' hand-out for how to download and prepare these yourlelf,
-or you can download the [reviews](reviews.rds) directly.
+or you can download the directly from  [http://rawgit.com/vanatteveldt/learningr/master/data/reviews.rds](http://rawgit.com/vanatteveldt/learningr/master/data/reviews.rds).
 
 ```{r}
 reviews = readRDS("data/reviews.rds")

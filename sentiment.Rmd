@@ -20,7 +20,7 @@ Lexicon and data
 
 For this exercise, we will use the Pittsburgh sentiment dictionary and the Amazon automotive reviews
 as described in the 'Getting Sentiment Resources' hand-out. 
-These files can be directly downloaded here: [reviews](rawgit.com/vanatteveldt/learningr/master/data/reviews.rds); [lexicon](rawgit.com/vanatteveldt/learningr/master/data/lexison.rds).
+These files can be directly downloaded from [http://rawgit.com/vanatteveldt/learningr/master/data/reviews.rds](http://rawgit.com/vanatteveldt/learningr/master/data/reviews.rds) (reviews) and [http://rawgit.com/vanatteveldt/learningr/master/data/lexicon.rds](http://rawgit.com/vanatteveldt/learningr/master/data/lexicon.rds) (lexicon).
 
 
 ```{r}
