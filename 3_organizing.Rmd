@@ -3,6 +3,7 @@ output: pdf_document
 ---
 ```{r, echo=FALSE}
 cat(paste("(C) (cc by-sa) Wouter van Atteveldt, file generated", format(Sys.Date(), format="%B %d %Y")))
+head = function(...) knitr::kable(utils::head(...))
 ```
 
 > Note on the data used in this howto: 
@@ -52,6 +53,10 @@ To facilitate this, R provides a pair of functions `read.csv2`/`write.csv2` that
 If you open a CSV file using the wrong function, you will only see a single column with all the values in it.
 For example, if we  use `read.csv2` to  open the file we just created we get the following:
 
+```{r, echo=F}
+head = utils::head
+```
+
 ```{r}
 d = read.csv2("test.csv")
 head(d)
@@ -73,6 +78,10 @@ Now, you can clear the data from your environment, using the Clear button in RSt
 ```{r, error=TRUE}
 rm(list=ls())
 head(income)
+```
+
+```{r, echo=F}
+head = function(...) knitr::kable(utils::head(...))
 ```
 
 And if you load the file, the variables will appear again:
@@ -104,6 +113,46 @@ We can place an expression in the rows selector to subset the data like that:
 ```{r}
 subset = income[income$Year > 1945, c("Year", "US", "France")]
 head(subset)
+```
+
+An easy 'shortcut' to subset data by selecting only certain rows is by using the `subset` function.
+This function allows you to specify criteria using column names directly, i.e. without using the `dataset$` prefix:
+
+```{r}
+postwar = subset(income, Year > 1945)
+head(postwar)
+```
+
+
+Ordering data
+----
+
+The easiest way to order data is using the `arrange` command from the `plyr` package. 
+If you haven't installed `plyr` yet, you can install it with:
+
+```{r, eval=F}
+install.packages("plyr")
+```
+
+Now, you can use the arrange command which, like the subset command, allows you to use columns directly.
+For example, this code orders the income dataset by ascending inequality for France:
+
+```{r}
+library(plyr)
+income = arrange(income, France)
+head(income)
+```
+
+So, the years with the most equal income distribution in France are in the 1980's, after which inequality was again on the increase.
+
+You can also specify multiple columns by just adding extra arguments. 
+The named argument `decreasing=TRUE` makes it easy to sort in descending order.
+Finally, note that you can always using `plyr::rearrange` without first using the `library(plyr)` command.
+Thus, the following code sorts by decreasing inequality in Canada and then by decreasing year:
+
+```{r}
+income = plyr::arrange(income, Canada, Year, decreasing=T)
+head(income)
 ```
 
 Calculating columns
@@ -185,7 +234,7 @@ Similarly, the is.na function can be used to globally replace NA values in a dat
 
 ```{r}
 subset[is.na(subset)] = 0
-head(subset, n=10)
+head(subset)
 ```
 
 
