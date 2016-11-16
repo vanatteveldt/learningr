@@ -21,14 +21,17 @@ date:   Glasgow Text Analysis, 2016-11-17
 
 Course Overview
 ========================================================
-Morning Session:
+
+10:30 - 12:00
 - Recap: Frequency Based Analysis and the DTM
 - Dictionary Analysis with AmCAT and R
-- Corpus Analysis and Visualization
 
-Afternoon Session:
+13:30 - 15:00
 - Simple Natural Language Processing
+- Corpus Analysis and Visualization
 - Topic Modeling and Visualization
+
+15:15 - 17:00
 - Sentiment Analysis with dictionaries
 - Sentiment Analysis with proximity
 
@@ -156,7 +159,7 @@ AmCAT demo
 ===
 type:section
 
-Running AmCAT queries in R
+Connecting to AmCAT from R
 ===
 
 ```{r, eval=F}
@@ -169,6 +172,13 @@ library(amcatr)
 ```
 ```{r}
 conn = amcat.connect("https://amcat.nl")
+meta = amcat.articles(conn, project=1235, articleset=32114, dateparts = T)
+table(meta$medium)
+saveRDS(meta, "meta.rds")
+```
+
+Running AmCAT queries in R
+```{r}
 a = amcat.aggregate(conn, sets=32139, queries = c("trump", "clinton"), axis1 = "week")
 head(a)
 ```

@@ -7,6 +7,10 @@
 .reveal pre code.r {background-color: #ccF}
 .reveal pre code {font-size: 1.3em}
 
+.small-code pre code {
+  font-size: 1.15em;
+}
+
 .section .reveal li {color:white}
 .section .reveal em {font-weight: bold; font-style: "none"}
 
@@ -19,21 +23,293 @@ Corpus Analysis and Visualization
 author: Wouter van Atteveldt
 date:   Glasgow Text Analysis, 2016-11-17
 
+```{r, echo=FALSE}
+Head = function(...) knitr::kable(utils::head(...))
+```
+
 Course Overview
 ========================================================
-Morning Session:
+
+10:30 - 12:00
 - Recap: Frequency Based Analysis and the DTM
 - Dictionary Analysis with AmCAT and R
-- *Corpus Analysis and Visualization*
 
-Afternoon Session:
-- Simple Natural Language Processing
+13:30 - 15:00
+- *Simple Natural Language Processing*
+- Corpus Analysis and Visualization
 - Topic Modeling and Visualization
+
+15:15 - 17:00
 - Sentiment Analysis with dictionaries
 - Sentiment Analysis with proximity
 
+
+Simple NLP
+====
+
++ Preprocess documents to get more information
++ Relatively fast and accurate
+  + Lemmatizing
+  + Part-of-Speech (POS) tagging
+  + Named Entity Recognition
++ Unfortunately, not within R
+
+NLPipe + nlpiper
+===
+
++ nlpipe: simple NLP processing based on stanford corenlp, others
+
+```{sh, eval=F}
+docker run -dp 5001:5001 vanatteveldt/nlpipe
+docker run -dp 9000:9000 chilland/corenlp-docker
+```
+
+```{r, eval=F}
+devtools::install_github("vanatteveldt/nlpiper")
+```
+```{r}
+library(nlpiper)
+process("test_upper", "test")
+```
+
+Corenlp POS+lemma+NER
+====
+
+```{r}
+library(nlpiper)
+text = "Donald trump was elected president of the United States"
+process("corenlp_lemmatize", text, format="csv")
+```
+
+NLPiper and US elections
+===
+class: small-code
+
++ Nlpipe and especially the r library is very much work in progress
++ Can only do one document at a time from R
++ Download tokens for US elections:
+
+```{r, eval=FALSE}
+# choose one:
+download.file("http://i.amcat.nl/tokens.rds", "tokens.rds")
+download.file("http://i.amcat.nl/tokens_full.rds", "tokens.rds")
+download.file("http://i.amcat.nl/tokens_sample.rds", "tokens.rds")
+```
+```{r}
+tokens = readRDS("tokens.rds")
+Head(tokens)
+```
+
 Corpus Analysis
 =====
+type:section
+
+Corpus Analysis
+===
 
 - Exploratory Analysis
 - Term statistics
+- Corpus comparison
+
+The corpustools package
+- Useful functions for corpus analysis
+- Not fully integrated with quanteda
+  - (we're working on it :) )
+  
+```{r, eval=FALSE}  
+devtools::install_github("kasperwelbers/corpus-tools")
+```
+
+Dtm vs Dfm
+===
+
+- quanteda uses 'dfm' objects
+  - document-feature matrix
+- tm uses 'dtm' objects
+  - document-term matrix
+- Both are sparse matrices 
+
+Dtm vs dfm
+====
+
+```{r}
+library(quanteda)
+dfm = dfm(c("a text", "and another text"))
+dtm = convert(dfm, "tm")
+class(dtm)
+
+library(corpustools)
+dfm = dtm.to.dfm(dtm)
+class(dfm)
+```
+
+
+Create DTM from tokens
+===
+
+```{r}
+dtm = dtm.create(tokens$id, tokens$lemma)
+dtm.names = with(subset(tokens, POS1=="R"), 
+                 dtm.create(id, lemma))
+dtm.adj = with(subset(tokens, POS1=="G"), 
+               dtm.create(id, lemma))
+dtm.persons = with(subset(tokens, ner=="PERSON"), 
+                   dtm.create(id, lemma))
+```
+
+Term statistics
+===
+
+```{r}
+stats = term.statistics(dtm.persons)
+stats = plyr::arrange(stats, -termfreq)
+Head(stats)
+```
+
+Corpus Comparison
+===
+
+```{r}
+meta = readRDS("meta.rds")
+nyt1 = meta$id[meta$medium == "The New York Times" & meta$date < "2016-08-01"]
+nyt2 = meta$id[meta$medium == "The New York Times" & meta$date >= "2016-08-01"]
+dtm1 = with(subset(tokens, id %in% nyt1 & POS1=="G"), dtm.create(id, lemma))
+dtm2 = with(subset(tokens, id %in% nyt2 & POS1=="G"), dtm.create(id, lemma))
+cmp = corpora.compare(dtm1, dtm2)
+cmp = plyr::arrange(cmp, -chi)
+Head(cmp)
+```
+
+Visualization
+===
+type:section
+
+Visualization
+===
+
+```{r, fig.width=10, fig.height=10}
+dtm.wordcloud(dtm.persons, freq.fun = sqrt)
+```
+
+Beyond (stupid) word clouds
+===
+
++ Word clouds waste most information
++ `corpustools::plotWords`
+  + specify x, y, colour, size, etc.
++ Use any analytics you have to determine characteristics
++ See also http://vanatteveldt.com/lse-text-visualization/
+
+Visualizing comparisons
+===
+
+```{r, fig.width=20, fig.height=8}
+h = rescale(log(cmp$over), c(1, .6666))
+s = rescale(sqrt(cmp$chi), c(.25,1))
+cmp$col = hsv(h, s, .33 + .67*s)
+cmp = arrange(cmp, -chi)
+with(head(cmp, 75), plotWords(x=log(over), words=term, wordfreq=chi, random.y = T, col=col, scale=2))
+```
+
+Visualizing over time
+===
+
+```{r, fig.width=20, fig.height=8}
+terms = term.statistics(dtm.persons)
+
+wordfreqs = dtm.to.df(dtm.persons)
+wordfreqs = merge(meta, wordfreqs, by.x="id", by.y="doc")
+dates = aggregate(wordfreqs["date"], by=wordfreqs["term"], FUN=mean)
+terms = merge(terms, dates)
+terms = plyr::arrange(terms, -docfreq)
+with(head(terms, 50), plotWords(words=term, x=date, wordfreq = termfreq))
+axis(1)
+```
+
+Topic Modeling
+===
+type:section
+
+Topic Models
+===
+
+```{r}
+dtm = with(subset(tokens, POS1 %in% c("G", "N", "V")), 
+                 dtm.create(id, lemma, minfreq = 10))
+dtm = dtm[, !colnames(dtm) %in% tm::stopwords()]
+set.seed(1234)
+m = lda.fit(dtm, K = 10, num.iterations = 50, alpha=0.5)
+Head(terms(m, 10))
+```
+
+===
+Visualizing Topic Models: LDAvis
+
+```{r, eval=F}
+install.packages(c("LDAvis", "servr"))
+library(LDAvis)
+dtm = dtm[row_sums(dtm) > 0,]
+json = ldavis_json(m, dtm)
+LDAvis::serVis(json)
+```
+
+
+
+Visualizing Topic Models: heat map
+=== 
+
+```{r}
+topics = c("city", "woman", "play", "debate", "country", "tax", "art", "campaign", "votes", "email")
+cm = cor(t(m@beta))
+colnames(cm) = rownames(cm) = topics
+diag(cm) = 0
+heatmap(cm, symm = T)
+```
+
+Visualizing Topic Models: word clouds
+=== 
+
+```{r}
+compare.topics <- function(m, cmp_topics) {
+  docs = factor(m@wordassignments$i, labels=m@documents)
+  terms = factor(m@wordassignments$j, labels=m@terms)
+  assignments = data.frame(doc=docs, term=terms, freq=m@wordassignments$v)
+  terms = dcast(assignments, term ~ freq, value.var = "doc", fun.aggregate = length)
+  terms = terms[, c(1, cmp_topics+1)]
+  terms$freq = rowSums(terms[-1])
+  terms = terms[terms$freq > 0,]
+  terms$prop = terms[[2]] / terms$freq
+  terms$col = hsv(rescale(terms$prop, c(1, .6666)), .5, .5)
+  terms[order(-terms$freq), ]
+}
+```
+
+Visualizing Topic Models: word clouds
+=== 
+```{r, fig.width=20, fig.height=8}
+terms = compare.topics(m, match(c("tax", "email"), topics))
+with(head(terms, 100), plotWords(x=prop, wordfreq = freq, words = term, col=col, xaxt="none", random.y = T, scale=2))
+```
+
+
+Analysing Topic Models
+===
+```{r}
+tpd = topics.per.document(m)
+colnames(tpd)[-1] = topics
+tpd = merge(meta, tpd)
+Head(tpd)
+```
+
+Hands-on session II
+===
+type:section
+
+- Corpus analysis of Election campaign 
+  - (or your own data...)
+- Which words, adjectives, verbs, etc are frequent?
+- How do they differ over time, by medium, subcorpus
+- What topics can we find?
+- Can we visualize topics, contrasts, etc.
+  
+  
