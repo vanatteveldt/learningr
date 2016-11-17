@@ -60,8 +60,9 @@ NLPipe + nlpiper
 + nlpipe: simple NLP processing based on stanford corenlp, others
 
 ```{sh, eval=F}
-docker run -dp 5001:5001 vanatteveldt/nlpipe
-docker run -dp 9000:9000 chilland/corenlp-docker
+docker run --name corenlp -dp 9000:9000 chilland/corenlp-docker
+
+docker run --name nlpipe --link corenlp:corenlp -e "CORENLP_HOST=http://corenlp:9000" -dp 5001:5001 vanatteveldt/nlpipe
 ```
 
 ```{r, eval=F}
@@ -75,7 +76,7 @@ process("test_upper", "test")
 Corenlp POS+lemma+NER
 ====
 
-```{r}
+```{r, eval=FALSE}
 library(nlpiper)
 text = "Donald trump was elected president of the United States"
 process("corenlp_lemmatize", text, format="csv")
@@ -171,10 +172,13 @@ Corpus Comparison
 
 ```{r}
 meta = readRDS("meta.rds")
-nyt1 = meta$id[meta$medium == "The New York Times" & meta$date < "2016-08-01"]
-nyt2 = meta$id[meta$medium == "The New York Times" & meta$date >= "2016-08-01"]
-dtm1 = with(subset(tokens, id %in% nyt1 & POS1=="G"), dtm.create(id, lemma))
-dtm2 = with(subset(tokens, id %in% nyt2 & POS1=="G"), dtm.create(id, lemma))
+nyt = meta$medium == "The New York Times"
+nyt1 = meta$id[nyt & meta$date < "2016-08-01"]
+nyt2 = meta$id[nyt & meta$date >= "2016-08-01"]
+dtm1 = with(subset(tokens, id %in% nyt1 & POS1=="G"), 
+            dtm.create(id, lemma))
+dtm2 = with(subset(tokens, id %in% nyt2 & POS1=="G"), 
+            dtm.create(id, lemma))
 cmp = corpora.compare(dtm1, dtm2)
 cmp = plyr::arrange(cmp, -chi)
 Head(cmp)

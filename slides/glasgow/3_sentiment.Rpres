@@ -1,0 +1,252 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+.reveal pre code {font-size: 1.3em}
+
+.small-code pre code {
+  font-size: 1.15em;
+}
+
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+Sentiment Analysis
+========================================================
+author: Wouter van Atteveldt
+date:   Glasgow Text Analysis, 2016-11-17
+
+```{r, echo=FALSE}
+Head = function(...) knitr::kable(utils::head(...))
+```
+
+```{r, echo=F, eval=F}
+tokens = readRDS("tokens.rds")
+library(corpustools)
+dtm = with(subset(tokens, POS1 %in% c("G", "N", "V")), 
+                 dtm.create(id, lemma, minfreq = 10))
+saveRDS(dtm, "dtm.rds")
+```
+
+```{r, echo=F}
+tokens = readRDS("tokens.rds")
+dtm=readRDS("dtm.rds")
+meta = readRDS("meta.rds")
+```
+
+Sentiment Analysis
+====
+
++ What is the tone of a text?
++ Techniques (e.g. Pang/Lee 2008, Liu 2012)
+  + Manual coding
+  + Dictionaries
+  + Machine Learning
+  + Crowdsourcing (Benoit ea 2015)
++ See e.g. https://www.cs.uic.edu/~liub/FBS/NLP-handbook-sentiment-analysis.pdf
+  
+Sentiment Analysis: problems
+====
+
+<em>"The man who leaked cell-phone coverage of Saddam Hussein's execution was arrested"</em>
+  
++ Language is subjective, ambiguous, creative
++ What does positive/negative mean?
+  + e.g. Osgood ea 1957: evaluation, potency, activity
++ Who is positive/negative about what?
+  + Sentiment Attribution
+
+Sentiment Analysis resources
+====
+
++ Lexicon (dictionary)
++ Annotated texts
++ Tools / models
+
+
+Lexical Sentiment Analysis
+===
+
++ Get list of positive / negative terms
++ Count occurrences in text
++ Summarize to sentiment score
++ Possible improvements
+  + Word-window approach (tomorrow)
+  + Deal with negation, intensification
+
+Lexical Sentiment Analysis in R
+===
+class: small-code
+
++ Nothing new here!
++ Directly count words in DTM:
+
+```{r}
+lex = list(pos=c("good", "nice", "great"), neg=c("bad","stupid", "crooked"))
+library(slam)
+npos = row_sums(dtm[, colnames(dtm) %in% lex$pos])
+nneg = row_sums(dtm[, colnames(dtm) %in% lex$neg])
+sent = data.frame(id=rownames(dtm), npos=npos, nneg=nneg)
+sent$subj = sent$npos + sent$nneg
+sent$sent = ifelse(sent$subj == 0, 0, 
+                   (sent$npos-sent$nneg) / (sent$subj))
+sent = merge(meta, sent)
+Head(sent)
+```
+
+Lexical Sentiment Analysis in R
+===
+
+```{r}
+a = aggregate(sent[c("sent", "subj")],
+              sent[c("week", "medium")], sum)
+library(ggplot2)
+ggplot(a, aes(x=week, y=sent, colour=medium)) + 
+  geom_line()
+```
+
+Lexical Sentiment Analysis: Alternatives
+===
+
+Apply directly to tokenlist:
+
+```{r}
+tokens$sent =0
+tokens$sent[tokens$lemma %in% lex$pos] = 1
+Head(tokens[tokens$sent > 0,])
+```
+
+Lexical Sentiment Analysis: Quanteda
+===
+Use `quanteda::apply`
+
+```{r}
+library(quanteda)
+library(corpustools)
+dfm = dtm.to.dfm(dtm)
+dfm = applyDictionary(dfm, lex)
+head(dfm)
+```
+
+Acquiring a lexicon
+===
+
+- Many sentiment lexicons exist 
+  - [wordstat, LIWC, lexicoder, harvard IV, ...](https://provalisresearch.com/products/content-analysis-software/wordstat-dictionary/sentiment-dictionaries/)
+  - [Liu's opinion lexicon](https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html#lexicon)
+  - [Wiebe's subjectivity lexicon](http://mpqa.cs.pitt.edu/)
+- Download, run, evaluate
+
+
+Parsing a sentiment lexicon
+===
+type:section
+
+Parsing a sentiment lexicon
+===
+
+```{r}
+lex = readRDS("lexicon.rds")
+dict = list(
+  pos = lex$word1[lex$priorpolarity == "positive"],
+  neg = lex$word1[lex$priorpolarity == "negative"],
+  trump = "Trump",
+  clinton = c("Hillary", "Clinton"))
+```
+
+Proximity-based sentiment analysis
+===
+
+- Political texts contain multiple statements
+- Apply words to actors in close proximity
+  - Within sentence/paragraph -> create dtm/dfm at sentence level
+  - Within N words -> use token list
+- However, "Trump calls Clinton crooked"
+  - clause anlaysis (http://vanatteveldt.com/2016-clause-analysis/)
+
+Sentence-level sentiment:
+===
+
+```{r}
+tokens$doc = paste(tokens$id, tokens$sentence, sep="_")
+dtm = dtm.create(tokens$doc, tokens$lemma, minfreq = 10)
+x = sapply(dict, function(x) 
+  row_sums(dtm[, colnames(dtm) %in% x]))
+Head(x)       
+```
+
+
+Proximity-based sentiment: semnet
+===
+
+```{r, eval=F}
+devtools::install_github("kasperwelbers/semnet")
+```
+```{r}
+library(semnet)
+tokens$concept = NA
+for(c in names(dict))
+  tokens$concept[tokens$lemma %in% dict[[c]]] = c
+
+hits = windowedCoOccurenceNetwork(location=tokens$offset, 
+    term=tokens$concept, context=tokens$id,
+    window.size=40, output.per.context = T)
+hits = subset(hits, x %in% c("clinton", "trump") 
+              & y %in% c("pos", "neg"))
+hits$sent = ifelse(hits$y == "pos", 1, -1)
+tapply(hits$sent, droplevels(hits$x), mean)
+```
+
+Sentiment Analysis: difficulty
+===
+
+- Liu: "Although necessary, having an opinion lexicon is far from sufficient for accurate sentiment analysis" ... "sentiment analysis tasks are very challenging."
+- "[sentistrength] has human-level accuracy for short social web texts in English, except political texts."
+- Subjective language is
+  - Creative
+  - Ambiguous
+  - Subjective
+  - Content-sensitive
+- Political communication is (often) nuanced, complicated
+
+Improving sentiment analysis
+===
+
+- Domain adaptation
+  - Get term statistics
+  - Merge with lexicon
+  - Manually check top-X frequent words
+- Targeted sentiment anlaysis (next section)
+- Crowd sourcing (e.g. Haselmayer in press)
+- Machine learning (see handout)
+
+
+Hands-on session III
+===
+type:section
+
+- Sentiment Analysis of election campaign
+  - (or your own data ...)
+- What is the overall sentiment?
+  - Development over time, per medium
+- What is sentiment for different actors?
+- Try out different lexica
+- Try to adapt lexicon to domain
+
+Conclusion
+===
+type:section
+
+- Frequency-based text analysis
+  - Corpus analysis and topic modeling
+  - Natural language procesessing
+  - Sentiment Analysis
+- Lots of resources out there
+  - See e.g. vanatteveldt.com/glasgow-r
+- Questions?

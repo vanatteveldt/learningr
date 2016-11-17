@@ -7,6 +7,9 @@
 .reveal pre code.r {background-color: #ccF}
 .reveal pre code {font-size: 1.3em}
 
+.small-code pre code {
+  font-size: 1.15em;
+}
 .section .reveal li {color:white}
 .section .reveal em {font-weight: bold; font-style: "none"}
 
@@ -161,11 +164,13 @@ type:section
 
 Connecting to AmCAT from R
 ===
+class: small-code
 
 ```{r, eval=F}
 devtools::install_github("amcat/amcat-r")
 library(amcatr)
-amcat.save.password("https://amcat.nl", username="...", password="...")
+amcat.save.password("https://amcat.nl", username="...", 
+                    password="...")
 ```
 ```{r, echo=F}
 library(amcatr)
@@ -178,6 +183,7 @@ saveRDS(meta, "meta.rds")
 ```
 
 Running AmCAT queries in R
+===
 ```{r}
 a = amcat.aggregate(conn, sets=32139, queries = c("trump", "clinton"), axis1 = "week")
 head(a)
@@ -193,8 +199,10 @@ ggplot(data=a, mapping=aes(x=week, y=count, color=query)) + geom_line()
 Getting AmCAT data into R
 ===
 ```{r}
-h = amcat.hits(conn, sets=32142, queries=c("trump", "clinton"))
-meta = amcat.articles(conn, project=1235, articleset=32142)
+h = amcat.hits(conn, sets=32142, 
+               queries=c("trump", "clinton"))
+meta = amcat.articles(conn, project=1235, 
+                      articleset=32142)
 h = merge(meta, h)
 head(h)
 ```
@@ -202,8 +210,9 @@ head(h)
 Getting AmCAT texts into R
 ===
 ```{r}
-articles = amcat.articles(conn, project=1235, articleset=32142, dateparts=T,
-                          columns=c("date", "headline", "text"))
+articles = amcat.articles(conn, project=1235, 
+  articleset=32142, dateparts=T,
+  columns=c("date", "headline", "text"))
 articles$text[1]
 ```
 
@@ -211,7 +220,8 @@ articles$text[1]
 AmCAT and quanteda
 ===
 ```{r}
-d = dfm(articles$text, stem=T, ignoredFeatures=stopwords("english"))
+d = dfm(articles$text, stem=T, 
+        ignoredFeatures=stopwords("english"))
 d = trim(d, minDoc=10)
 d = weight(d, "tfidf")
 topfeatures(d)
