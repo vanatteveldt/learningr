@@ -1,0 +1,429 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+.small-code pre {
+  margin-left: -1em; margin-right: -1em;
+}
+.small-code pre code {
+  font-size: 1em;
+}
+
+</style>
+
+```{r, echo=F}
+setwd("~/5507_smap/wk3")
+system = function(...) {x = base::system(..., intern=T); cat(paste(x, collapse="\n"))}
+```
+
+
+Scraping with R: rvest
+========================================================
+author: Wouter van Atteveldt
+date: Web Scraping with RVest
+
+Why rvest?
+===
+
++ Interpreting HTML as text is hard
+    + optional elements, variations/errors possible
+        + `<a target="_blank" href="...">`
+        + `<a href=site.html><p>link</a>`
+    + Finding nested information really hard
+        + Especially if HTML contains errors, e.g. unbalanced tags
++ Search at level of node structure
+
+HTML as tree structure
+===
+
+```
+<html>
+  <head>
+    <style>...</style>
+  </head>
+  <body>
+    <h1>This is the head</h1>
+    <p>This is <a href="..">a link</a></p>
+  </body>
+</html
+```
+
+HTML as tree structure
+===
+
++ html
+    + head
+        + style
+    + body
+      + h1
+      + p
+        + a [href=..]
+      
+RVest
+===
+
++ Easy web scraping
+  + Uses httr and xml2
++ Search structure rather than raw html
+
+```{r, eval=F}
+install.packages("rvest")
+```
+```{r}
+library(rvest)
+test = read_html("http://i.amcat.nl/test/test.html")
+paras = html_nodes(test, "p")
+links = html_nodes(paras, "a")
+html_attr(links, "href")
+```
+
+Aside: magrittr
+===
+
+![Magritte](https://kunstblik.files.wordpress.com/2016/02/margritte-this-is-not-a-pipe.jpg)
+
+Pipeline notation in RVest
+===
+
+```{r}
+paras = html_nodes(test, "p")
+links = html_nodes(paras, "a")
+html_attr(links, "href")
+```
+
++ Pipeline notation: 
+  + x %>% f(y) is same as f(x, y)
+  + Simplifies chained function calls
+
+```{r}
+test %>% html_nodes("p") %>% 
+  html_nodes("a") %>% html_attr("href")
+```
+
+Using RVest
+===
+
++ Search for elements
+  + `html_nodes`, `html_node`
+  + Use *CSS Selectors*
++ Fill in forms, follow links
+  + `html_form`, `submit_form`
+  + `follow_link`
++ Extract information
+  + `html_attr`, `html_text`, `html_table`
+
+
+CSS Selectors
+===
+type:section
+
++ Web Scraping: principles and challenges
++ *Scraping with rvest*
+  + Introduction
+  + *CSS Selectors*
+  + Forms and links
+  + Logging in
++ Lab: scraping wikipedia II
+
+CSS and HTML
+===
+
++ HTML has limited set of tags
++ Cascading Style Sheets (CSS) 
+    + Specify style (font, color, border, placement)
+    + Based on structure, tags, HTML classses
++ Allows for 'semantic markup'
+    + HTML specifies structure, CSS layout
+    
+
+CSS Structure
+===
+
+```
+<selector> {<attr>: <val>}
+```
+
++ Selectors select groups of nodes:
+    + Tag name: `p {..}` 
+    + Class: `.main, p.main {..}`
+    + ID: `#story, p#story {..}`
+    + Structure
+        + direct child: `p > a {..}`
+        + indirect child: `p a {..}`
++ Combinations
+    + `p.body a`
+    + `#mainbody .title > a`
+        
+Let's play a game!
+====
+type: section
+
+http://flukeout.github.io/
+
+Using CSS in rvest
+===
+
++ `html_node` uses css selectors
++ Make selection as complex as you want
++ Select in whole doc or within other nodes 
++ E.g.: [test_css.html](http://i.amcat.nl/test/test_css.html)
+
+Using CSS in rvest
+===
+class: small-code
+
+```{r}
+test2 = read_html("test_css.html")
+test2 %>% html_nodes("a") %>% html_attr("href")
+test2 %>% html_nodes(".main a") %>% html_attr("href")
+test2 %>% html_nodes(".main") %>% html_nodes("a") %>% html_attr("href")
+test2 %>% html_nodes(".main p a") %>% html_attr("href")
+```
+
+XPath as alternative
+===
+
++ Xpath is general xml query language
++ Uses xml structure (not CSS semantics)
++ Less convenient, but more powerful
++ Use file-system like paths: 
+  + `//h2`: h2 anywhere in file
+  + `//p/a`: a directly under any p
+  + `./p`: p as direct child of current node
+
+XPath: axes
+===
+
++ Can also look at siblings, ancestors, etc.
++ syntax: `axis::nodetest[attributes]`
++ Useful axes:
+  + ancestor
+  + parent
+  + sibling
+
+XPath: example
+===
+class: small-code
+
+Get all text under 'Education' subheader
+
+```{r}
+url = "https://en.wikipedia.org/wiki/Hong_Kong"
+s = read_html(url)
+headers = s %>% html_nodes("h3") 
+hist = headers[headers %>% html_text == "Education"]
+text = hist %>% html_nodes(xpath="following-sibling::p") %>% html_text
+text[1]
+```
+Useful resources
+===
+
++ Browser developer tools
++ selectorgadget extension
++ http://flukeout.github.io/
++ http://www.w3schools.com/cssref/css_selectors.asp
++ http://www.w3schools.com/xml/xpath_axes.asp
+
+Extracting information from HTML
+===
+type:section
+
++ Web Scraping: principles and challenges
++ *Scraping with rvest*
+  + CSS Selectors
+  + *Extracting Information*
+  + Forms and links
+  + Logging in
++ Lab: scraping wikipedia II
+
+Extracting information from HTML
+===
+
++ `html_name`: name of tag(s)
++ `html_attr(attr)`: specific attribute (e.g. href)
++ `html_attrs`: all attributes
++ `html_text`: the (plain) text
+
+
+Extracting information from HTML
+===
+class: small-code
+
+```{r}
+test2 %>% html_nodes("h1") %>% html_text
+test2 %>% html_nodes(".main > *") %>% html_name
+test2 %>% html_nodes("a") %>% html_attr("href")
+test2 %>% html_nodes(".footer a") %>% html_attrs
+```
+
+
+Extracting tabular info
+===
+class: small-code
+
+```{r}
+t = read_html("http://i.amcat.nl/test/test_table.html")
+tab = t %>% html_node("table") %>% html_table
+class(tab)
+head(tab)
+```
+
+
+Show html structure
+===
+class: small-code
+
+```{r}
+html_structure(t)
+```
+
+
+Write HTML to file (useful for debugging)
+===
+
+```{r}
+write_html(t, file="/tmp/test.html")
+system("head /tmp/test.html")
+```
+
+Following links and Forms
+===
+type:section
+
++ Web Scraping: principles and challenges
++ *Scraping with rvest*
+  + CSS Selectors
+  + Extracting Information
+  + *Forms and links*
+  + Logging in
++ Lab: scraping wikipedia II
+
+Submitting forms from R
+===
+class: small-code
+
+```{r}
+search_url = "https://en.wikipedia.org/w/index.php?title=Special:Search"
+session = html_session(search_url)
+form = session %>% html_node("#search") %>% html_form
+form = set_values(form, search="obama")
+resp = submit_form(session, form=form)
+
+head(resp %>% html_nodes(".mw-search-result-heading") %>% html_text)
+head(resp %>% html_nodes(".mw-search-result-heading a") %>% html_attr("href"))
+```
+
+Following links
+===
+class: small-code
+
+```{r}
+r2 = follow_link(resp, i="Michelle Obama")
+r2 %>% html_nodes("h1,h2") %>% html_text
+
+r2 = follow_link(resp, css=".mw-search-result-heading a")
+r2 %>% html_nodes("h1,h2") %>% html_text
+
+r2 = follow_link(resp, i="next 20")
+r2 %>% html_nodes(".mw-search-result-heading") %>% html_text
+```
+
+Iterating over search results
+===
+
++ Option 1: 'click' next until no more results
++ Option 2: Manually build search result
+  + Find out number of pages / results
+  + Create for loop over pages
+  + Process each page
+  
+Iterating over search results: # of pages
+===
+class: small-code
+
+```{r}
+q = '"City University of Hong Kong"'
+session = html_session(search_url)
+form = session %>% html_node("#search") %>% html_form %>% set_values(search=q)
+r = submit_form(session, form)
+info = r %>% html_nodes(".results-info strong") %>% html_text
+i = as.integer(info[2])
+i
+```
+
+Iterating over search results: create urls
+===
+class: small-code
+
+```{r, eval=F}
+q = RCurl::curlEscape(q)
+maxpage = floor(i / 100)
+offsets = (0:maxpage) * 100
+template = "https://en.wikipedia.org/w/index.php?title=Special:Search&limit=100&offset=%i&search=%s"
+urls = NULL
+for(offset in offsets) {
+  url = sprintf(template, offset, q)
+  message("Offset:", offset, "; url:", url)
+  results = read_html(url) %>% html_nodes(".mw-search-result-heading a") 
+  links = results %>% html_attr("href")
+  urls = c(urls, links)
+}
+length(urls)
+urls[1:5]
+```
+
+Login required?
+===
+type:section
+
++ Web Scraping: principles and challenges
++ *Scraping with rvest*
+  + CSS Selectors
+  + Extracting Information
+  + Forms and links
+  + *Logging in*
++ Lab: scraping wikipedia II
+
+Logging in to sites
+===
+
++ Some sites require registration/login
++ Need to submit login form
++ Request other URLs within that session 
+
+Example: Scraping github
+===
+class: small-code
+
+```{r, echo=F}
+password = "pf214Tri"
+```
+
+```{r}
+s = html_session("https://github.com/login")
+form = html_form(s)[[1]]
+form = set_values(form, login="vanatteveldt", password=password)
+s = submit_form(s, form)
+
+r = jump_to(s, "https://github.com/settings/emails")
+emails = r %>% html_nodes("ul#settings-emails li") %>% html_text
+
+# remember? :)
+stringi::stri_extract_first(emails, regex="[\\w\\.]+@[\\w\\.]+")
+```
+
+Logging in to sites: Problems
+===
+
++ Sites can make it difficult to login (e.g. WSJ.com, LexisNexis)
+  + Can always be circumvented, but can be difficult
++ On registering, you agreed to their terms
+  + This can include a ban on scraping
+  + Always check legal issues first!
++ Often, API is better alternative (if offered)
