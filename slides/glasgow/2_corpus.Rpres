@@ -24,7 +24,7 @@ author: Wouter van Atteveldt
 date:   Glasgow Text Analysis, 2016-11-17
 
 ```{r, echo=FALSE}
-Head = function(...) knitr::kable(utils::head(...))
+library(printr)
 ```
 
 Course Overview
@@ -86,8 +86,8 @@ NLPiper and US elections
 ===
 class: small-code
 
-+ Nlpipe and especially the r library is very much work in progress
-+ Can only do one document at a time from R
++ You can lemmatize a set of articles or AmCAT set directly
++ But that can take a while..
 + Download tokens for US elections:
 
 ```{r, eval=FALSE}
@@ -97,8 +97,14 @@ download.file("http://i.amcat.nl/tokens_full.rds", "tokens.rds")
 download.file("http://i.amcat.nl/tokens_sample.rds", "tokens.rds")
 ```
 ```{r}
+getwd()
+```
+```{r}
+meta = readRDS("meta.rds")
+```
+```{r}
 tokens = readRDS("tokens.rds")
-Head(tokens)
+head(tokens)
 ```
 
 Corpus Analysis
@@ -114,74 +120,37 @@ Corpus Analysis
 
 The corpustools package
 - Useful functions for corpus analysis
-- Not fully integrated with quanteda
-  - (we're working on it :) )
+- Works on token list rather than dfm/dtm
+  - preserves word order
   
 ```{r, eval=FALSE}  
-devtools::install_github("kasperwelbers/corpus-tools")
+install.packages("corpustools")
 ```
 
-Dtm vs Dfm
+Create TCorpus from tokens
 ===
 
-- quanteda uses 'dfm' objects
-  - document-feature matrix
-- tm uses 'dtm' objects
-  - document-term matrix
-- Both are sparse matrices 
-
-Dtm vs dfm
-====
-
 ```{r}
-library(quanteda)
-dfm = dfm(c("a text", "and another text"))
-dtm = convert(dfm, "tm")
-class(dtm)
-
 library(corpustools)
-dfm = dtm.to.dfm(dtm)
-class(dfm)
-```
+tc = tokens_to_tcorpus(tokens, "id", sent_i_col = "sentence", )
+tc_nouns = tc$subset(POS1=="N", copy = T)
 
-
-Create DTM from tokens
-===
-
-```{r}
-dtm = dtm.create(tokens$id, tokens$lemma)
-dtm.names = with(subset(tokens, POS1=="R"), 
-                 dtm.create(id, lemma))
-dtm.adj = with(subset(tokens, POS1=="G"), 
-               dtm.create(id, lemma))
-dtm.persons = with(subset(tokens, ner=="PERSON"), 
-                   dtm.create(id, lemma))
-```
-
-Term statistics
-===
-
-```{r}
-stats = term.statistics(dtm.persons)
-stats = plyr::arrange(stats, -termfreq)
-Head(stats)
+dfm = tc$dtm('lemma', form = 'quanteda_dfm')
 ```
 
 Corpus Comparison
 ===
 
 ```{r}
-meta = readRDS("meta.rds")
-nyt = meta$medium == "The New York Times"
-nyt1 = meta$id[nyt & meta$date < "2016-08-01"]
-nyt2 = meta$id[nyt & meta$date >= "2016-08-01"]
-dtm1 = with(subset(tokens, id %in% nyt1 & POS1=="G"), 
-            dtm.create(id, lemma))
-dtm2 = with(subset(tokens, id %in% nyt2 & POS1=="G"), 
-            dtm.create(id, lemma))
-cmp = corpora.compare(dtm1, dtm2)
-cmp = plyr::arrange(cmp, -chi)
-Head(cmp)
+pre = subset(meta, medium == "The New York Times" & date < "2016-08-01")
+post = subset(meta, medium == "The New York Times" & date >= "2016-08-01")
+
+tc1 = tokens_to_tcorpus(subset(tokens, id %in% pre$id & POS1 == "G"), "id", sent_i_col = "sentence")
+tc2 = tokens_to_tcorpus(subset(tokens, id %in% post$id & POS1 == "G"), "id", sent_i_col = "sentence")
+
+cmp = tc1$compare_corpus(tc2, feature = 'lemma')
+cmp = plyr::arrange(cmp, -chi2)
+head(cmp)
 ```
 
 Visualization
@@ -192,7 +161,8 @@ Visualization
 ===
 
 ```{r, fig.width=10, fig.height=10}
-dtm.wordcloud(dtm.persons, freq.fun = sqrt)
+dfm = tc2$dtm('lemma', form='quanteda_dfm')
+textplot_wordcloud(dfm, max.words = 50, scale = c(4, 0.5))
 ```
 
 Beyond (stupid) word clouds
@@ -208,25 +178,23 @@ Visualizing comparisons
 ===
 
 ```{r, fig.width=20, fig.height=8}
-h = rescale(log(cmp$over), c(1, .6666))
-s = rescale(sqrt(cmp$chi), c(.25,1))
+h = rescale(log(cmp$ratio), c(1, .6666))
+s = rescale(sqrt(cmp$chi2), c(.25,1))
 cmp$col = hsv(h, s, .33 + .67*s)
-cmp = arrange(cmp, -chi)
-with(head(cmp, 75), plotWords(x=log(over), words=term, wordfreq=chi, random.y = T, col=col, scale=2))
+with(head(cmp, 75), plot_words(x=log(ratio), words=feature, wordfreq=chi2, random.y = T, col=col, scale=1))
 ```
 
 Visualizing over time
 ===
 
 ```{r, fig.width=20, fig.height=8}
-terms = term.statistics(dtm.persons)
-
-wordfreqs = dtm.to.df(dtm.persons)
-wordfreqs = merge(meta, wordfreqs, by.x="id", by.y="doc")
+wordfreqs = tidytext::tidy(dfm)
+wordfreqs = merge(meta, wordfreqs, by.x="id", by.y="document")
 dates = aggregate(wordfreqs["date"], by=wordfreqs["term"], FUN=mean)
-terms = merge(terms, dates)
-terms = plyr::arrange(terms, -docfreq)
-with(head(terms, 50), plotWords(words=term, x=date, wordfreq = termfreq))
+freqs = as.data.frame(table(wordfreqs$term))
+terms = merge(dates, freqs, by.x="term", by.y="Var1")
+terms = plyr::arrange(terms, -Freq)
+with(head(terms, 50), plot_words(words=term, x=date, wordfreq = Freq))
 axis(1)
 ```
 
@@ -237,23 +205,35 @@ type:section
 Topic Models
 ===
 
+
+Topic Models
+===
+
 ```{r}
-dtm = with(subset(tokens, POS1 %in% c("G", "N", "V")), 
-                 dtm.create(id, lemma, minfreq = 10))
-dtm = dtm[, !colnames(dtm) %in% tm::stopwords()]
+dtm = tc2$dtm(feature='lemma') # from tcorpus
+# or: dtm = convert(dfm, to="topicmodels") # from quanteda
+
 set.seed(1234)
-m = lda.fit(dtm, K = 10, num.iterations = 50, alpha=0.5)
-Head(terms(m, 10))
+library(topicmodels)
+m = LDA(dtm, k = 10, method = "Gibbs", control = list(iter = 100, alpha=.1))
+head(terms(m, 10))
 ```
 
 ===
 Visualizing Topic Models: LDAvis
 
 ```{r, eval=F}
-install.packages(c("LDAvis", "servr"))
 library(LDAvis)
-dtm = dtm[row_sums(dtm) > 0,]
-json = ldavis_json(m, dtm)
+dtm = dtm[slam::row_sums(dtm) > 0, ]
+phi <- posterior(m)$terms %>% as.matrix
+theta <- posterior(m)$topics %>% as.matrix
+vocab <- colnames(phi)
+doc.length = slam::row_sums(dtm)
+term.freq = slam::col_sums(dtm)[match(vocab, colnames(dtm))]
+json =  createJSON(phi = phi, theta = theta,
+             vocab = vocab,
+             doc.length = doc.length,
+             term.frequency = term.freq)
 LDAvis::serVis(json)
 ```
 
@@ -263,7 +243,7 @@ Visualizing Topic Models: heat map
 === 
 
 ```{r}
-topics = c("city", "woman", "play", "debate", "country", "tax", "art", "campaign", "votes", "email")
+topics = c("books", "police", "culture", "city", "campaign", "movies", "email", "people", "songs", "economy" )
 cm = cor(t(m@beta))
 colnames(cm) = rownames(cm) = topics
 diag(cm) = 0
@@ -291,18 +271,18 @@ compare.topics <- function(m, cmp_topics) {
 Visualizing Topic Models: word clouds
 === 
 ```{r, fig.width=20, fig.height=8}
-terms = compare.topics(m, match(c("tax", "email"), topics))
-with(head(terms, 100), plotWords(x=prop, wordfreq = freq, words = term, col=col, xaxt="none", random.y = T, scale=2))
+terms = compare.topics(m, match(c("campaign", "email"), topics))
+with(head(terms, 100), plot_words(x=prop, wordfreq = freq, words = term, col=col, xaxt="none", random.y = T, scale=2))
 ```
 
 
 Analysing Topic Models
 ===
 ```{r}
-tpd = topics.per.document(m)
-colnames(tpd)[-1] = topics
-tpd = merge(meta, tpd)
-Head(tpd)
+tpd = posterior(m)$topics
+colnames(tpd) = topics
+tpd = merge(meta, tpd, by.x="id", by.y="row.names")
+head(tpd)
 ```
 
 Hands-on session II

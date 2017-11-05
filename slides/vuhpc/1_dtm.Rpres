@@ -1,0 +1,333 @@
+<style>
+
+.reveal .slides > sectionx {
+    top: -70%;
+}
+
+.reveal pre code.r {background-color: #ccF}
+.reveal pre code {font-size: 1.3em}
+
+.small-code pre code {
+  font-size: 1.15em;
+}
+.section .reveal li {color:white}
+.section .reveal em {font-weight: bold; font-style: "none"}
+
+</style>
+
+
+
+Text Analysis with R
+========================================================
+author: Wouter van Atteveldt
+date:   VU-HPC, 20167-11-05
+
+Course Overview
+========================================================
+
+9:00 - 10:30
+- R as a data analysis evironment
+- Frequency Based Analysis and the DTM
+- Dictionary Analysis with AmCAT and R
+
+11:00 - 13:00
+- Simple Natural Language Processing
+- Corpus Analysis and Visualization
+- Topic Modeling and Visualization
+
++ Please install R+Rstudio now! `:-)`
+
+R as a data analysis environment
+===
+type: section
+
+Why R?
+===
+
++ Open source, active community
++ Native vector/matrix calculus
++ Slow, but modules mostly in C or Fortran
++ R vs Python
+  + Strongly converging (numpy/pandas)
+  + Python more 'programming', R more 'statistics'
++ R vs SPSS
+  + ...
+
+R basics
+===
+
++ Functionality in packages
+  + `install.packages("quanteda")`
+  + `library(quanteda)`
+  + OR: `quanteda::dfm(..)`
++ Lazy evaluation, functions are objects, (most) functions don't change arguments, most functions apply to vectors
+
+R primitives
+===
+
++ Basic variables are *vectors* of numbers, texts, etc
+  + `c(1,2,3)`, `1:3`, `c("a", "b")`
++ Data frames are a named list of columns (vectors)
++ Subsetting: `a[elements]` or `a[rows, columns]`
++ Element selection: `d$column`
+
+Some R Packages
+===
+
++ `stringr` - basic string manipulation
++ `quanteda` - bag-of-words text analysis
++ `readtext` - reading text in various formats
++ `topicmodels` - topic modeling
++ `corpustools` - tokenlist text analysis
+
+RStudio
+===
+
++ Shell around R
++ Use projects to organize scripts+data
++ R-markdown and R-presentation to weave code and data
+
+Frequency Based Analysis: The DTM
+===
+type: section
+
+Frequency Based Analysis
+===
+
+- Analysis based on word frequency only
+  - "Bag of words" assumption
+  - Ignore grammar, proximity, relations, ...
+- Main data: Document-term matrix (dtm)
+- Can also use other features (dfm)
+  - Bag of stems, lemmata, word pairs, ...
+  
+Creating a DTM
+===
+
+1. Text source
+ - Text files
+ - Data frames / vectors or text
+ - External sources/APIs
+2. Preprocessing
+ - Stemming, lowercasing, lemmatizing
+ - Collocations
+2. Feature selection
+ - Frequency
+ - Stopwords
+
+Creating a DTM from text
+===
+
+```{r}
+library(quanteda)
+texts=c("This is a test", "They tested a test", "I found a test!")
+dfm(texts)
+```
+
+Reading texts from file (or URL)
+===
+
+```{r}
+library(readtext)
+filepath <- "http://bit.ly/2uhqjJE?.csv"
+t <- readtext(filepath, text_field = 'texts')
+dfm(t$text)
+```
+
+Preprocessing: stemming, stopword removal
+===
+
+```{r}
+dfm(texts, stem=T, remove=stopwords("english"))
+```
+
+Feature selection
+===
+
+```{r}
+dfm = dfm(texts, stem=T)
+dfm = dfm_trim(dfm, min_doc = 2)
+dfm
+```
+
+More control: quanteda step-by-step
+===
+
+```{r}
+tokens = tokenize(texts, remove_punct = T)
+tokens = toLower(tokens)
+tokens = tokens_wordstem(tokens, "english")
+dfm = dfm(tokens)
+dfm = dfm_select(dfm, stopwords("english"), "remove")
+dfm = dfm_trim(dfm, min_count = 1)
+dfm
+```
+
+Preprocessing: collocations
+===
+
+```{r}
+coll = textstat_collocations(tokens)
+head(coll)
+```
+
+Preprocessing: collocations
+===
+
+```{r}
+compounded = tokens_compound(tokens, coll)
+dfm(compounded)
+```
+
+(De-)Motivational example:  Dutch stemming
+===
+
+```{r}
+dfm_nl = dfm(c("De kippen eten", "De kip heeft gegeten"), remove=stopwords("dutch"))
+dfm_nl
+dfm_wordstem(dfm_nl, language="dutch")
+```
+
+(We will cover lemmatizing and POS-tagging this afternoon!)
+
+Dictionary-based analysis
+===
+type:section
+
+
+Dictionary-based analysis
+===
+
+- Use list of keywords to define a concept
+- (words, wildcards, boolean combinations, phrases, etc.)
+- Measure (co-)occurrence of these concepts
+
+Advantages of dictionaries?
+- Easy to explain
+- Easy to use
+- Control over operationalization
+
+AmCAT 
+===
+
+- Free and Open Source text analysis infrastructure
+- Easy corpus management, keyword queries
+- Integrates with R / quanteda
+- Run your own server or use ours (amcat.nl)
+
+
+AmCAT demo
+===
+type:section
+
+Connecting to AmCAT from R
+===
+class: small-code
+
+```{r, eval=F}
+devtools::install_github("amcat/amcat-r")
+library(amcatr)
+amcat.save.password("https://amcat.nl", username="...", 
+                    password="...")
+```
+```{r, echo=F}
+library(amcatr)
+```
+```{r}
+conn = amcat.connect("https://amcat.nl")
+meta = amcat.articles(conn, project=1235, articleset=32114, dateparts = T)
+table(meta$medium)
+saveRDS(meta, "meta.rds")
+```
+
+Running AmCAT queries in R
+===
+```{r}
+a = amcat.aggregate(conn, sets=32139, queries = c("trump", "clinton"), axis1 = "week")
+head(a)
+```
+
+Running AmCAT queries in R
+===
+```{r}
+library(ggplot2)
+ggplot(data=a, mapping=aes(x=week, y=count, color=query)) + geom_line()
+```
+
+Getting AmCAT data into R
+===
+```{r}
+h = amcat.hits(conn, sets=32142, 
+               queries=c("trump", "clinton"))
+meta = amcat.articles(conn, project=1235, 
+                      articleset=32142)
+h = merge(meta, h)
+head(h)
+```
+
+Getting AmCAT texts into R
+===
+```{r}
+articles = amcat.articles(conn, project=1235, 
+  articleset=32142, dateparts=T,
+  columns=c("date", "headline", "text"))
+saveRDS(articles, "articles.rds")
+articles$text[1]
+```
+
+
+AmCAT and quanteda
+===
+```{r}
+d = dfm(articles$text, stem=T, 
+        remove=stopwords("english"), remove_punct=T)
+d = dfm_trim(d, min_doc=10)
+topfeatures(d)
+textplot_wordcloud(d, max.words = 50, scale = c(4, 0.5))
+```
+
+AmCAT and quanteda (2)
+===
+```{r}
+c = quanteda.corpus(conn, project=1235, articleset=32142, dateparts=T)
+d = dfm(c, remove=stopwords("english"))
+head(d)
+```
+
+Dictionares within R
+===
+
+```{r}
+issues = dictionary(list(economy=c("econ*", "inflation"), immigration=c("immigr*", "mexican*")))
+d2 = dfm_lookup(d, issues, exclusive=T)
+tail(d2)
+```
+
+Dictionares within R
+===
+
+```{r}
+d2 = cbind(docvars(c), as.matrix(d2))
+a = aggregate(d2[names(issues)], d2["week"], sum)
+ggplot(a, aes(x=week)) +
+  geom_line(aes(y = economy, color="green"))  +
+  geom_line(aes(y = immigration, color="red"))
+```
+
+Where to get dictionaries?
+===
+
+- Create your own
+- Create from corpora (next session)
+- Replication materials
+- wordstat, LIWC, ...
+
+Hands-on session I
+===
+
+- Why did Trump win the (primary) election?
+- Operationalize a variable using search strings
+  - candidates, issues, emotion, populism, ...
+  - download or create word list
+- Plot variable over time / co-occurring with either candidate
+- Use AmCAT GUI, AmCAT R, quanteda, ...
