@@ -21,7 +21,7 @@
 Corpus Analysis and Visualization
 ========================================================
 author: Wouter van Atteveldt
-date:   Glasgow Text Analysis, 2016-11-17
+date:   VU-HPC, 2017-11-05
 
 
 
