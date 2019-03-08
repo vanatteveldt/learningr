@@ -17,12 +17,6 @@
 
 </style>
 
-```{r, echo=F}
-setwd("~/5507_smap/wk3")
-system = function(...) {x = base::system(..., intern=T); cat(paste(x, collapse="\n"))}
-```
-
-
 Scraping with R: rvest
 ========================================================
 author: Wouter van Atteveldt
@@ -216,7 +210,7 @@ Get all text under 'Education' subheader
 ```{r}
 url = "https://en.wikipedia.org/wiki/Hong_Kong"
 s = read_html(url)
-headers = s %>% html_nodes("h3") 
+headers = s %>% html_nodes("h2") 
 hist = headers[headers %>% html_text == "Education"]
 text = hist %>% html_nodes(xpath="following-sibling::p") %>% html_text
 text[1]
@@ -289,7 +283,6 @@ Write HTML to file (useful for debugging)
 
 ```{r}
 write_html(t, file="/tmp/test.html")
-system("head /tmp/test.html")
 ```
 
 Following links and Forms
