@@ -395,7 +395,7 @@ Example: Scraping github
 class: small-code
 
 ```{r, echo=F}
-password = "pf214Tri"
+password = readRDS("password.rds")
 ```
 
 ```{r}
