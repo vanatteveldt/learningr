@@ -1,3 +1,4 @@
+## From: https://www.r-bloggers.com/latent-dirichlet-allocation-under-the-hood/
 ## Generate a corpus
 
 rawdocs <- c('dirichlet topic models',
